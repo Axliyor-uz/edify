@@ -1,0 +1,89 @@
+================================================================================
+WASPAI EDUCATION PLATFORM - DATABASE ARCHITECTURE & LOGIC
+================================================================================
+
+1. CORE PHILOSOPHY: "Unified Collection, Divergent Profiles"
+--------------------------------------------------------------------------------
+We store both Students and Teachers in the same 'users' collection. 
+We distinguish them using a 'role' field. This makes authentication simple 
+(everyone logs in the same way), but allows the UI to show completely different 
+dashboards based on that role.
+
+2. THE 'USERS' COLLECTION SCHEMA (path: /users/{uid})
+--------------------------------------------------------------------------------
+
+A. SHARED DATA (Fields present on ALL users)
+   These fields are identical for both Students and Teachers.
+   
+   - uid (string):         Unique Auth ID (matches Firebase Auth).
+   - email (string):       Login email.
+   - username (string):    Unique handle (e.g., "elyor_math"). Used for searching.
+   - displayName (string): Full legal name.
+   - phone (string):       Formatted phone number (+998 ...).
+   - birthDate (string):   "YYYY-MM-DD".
+   - role (string):        Either "student" or "teacher".
+   - createdAt (string):   ISO Timestamp of registration.
+   
+   - institution (string): Root-level field.
+                           For Students: Name of their School/University.
+                           For Teachers: Name of their Organization/Workplace.
+   
+   - location (map):       Nested object for address details.
+       {
+           country: "Uzbekistan",
+           region: "Tashkent City",
+           district: "Yunusabad"
+       }
+
+B. STUDENT-SPECIFIC DATA (Added only if role == 'student')
+   These fields drive the gamification and learning tracking.
+   
+   - grade (string):       Academic level (e.g., "school_9", "uni_2").
+   - level (number):       Current RPG Level (Starts at 1).
+   - totalXP (number):     Experience points earned (Starts at 0).
+   - currentStreak (number): Days in a row using the app (Starts at 0).
+   
+   - dailyHistory (map):   Record of daily activity for heatmaps.
+       { "2026-01-20": 50 } // Earned 50 XP on this date
+       
+   - progress (map):       Pointers to where they stopped learning.
+       {
+           completedTopicIndex: 0,
+           completedChapterIndex: 0,
+           completedSubtopicIndex: 0
+       }
+
+C. TEACHER-SPECIFIC DATA (Added only if role == 'teacher')
+   These fields manage the creator tools and verification status.
+   
+   - grade (string):       Hardcoded to "Teacher" (Used to filter them out of student lists).
+   - subject (string):     Main subject taught (e.g., "Mathematics", "Physics").
+   - verifiedTeacher (bool): Default 'false'. Admin can set 'true' to give a "Blue Check".
+   - createdTests (array): List of IDs for tests they have authored.
+       [ "test_id_1", "test_id_2" ]
+
+3. SUPPORTING COLLECTIONS
+--------------------------------------------------------------------------------
+
+A. /usernames (path: /usernames/{username_lowercase})
+   Purpose: guarantees uniqueness. Before creating a user, we check if a doc 
+   exists here.
+   
+   - uid (string): Reference to the real user ID.
+
+4. LOGIC FLOW (How Signup Works)
+--------------------------------------------------------------------------------
+1. User enters data in the Signup Wizard.
+2. System checks /usernames to ensure the handle is available.
+3. System creates a Firebase Auth account (email/password).
+4. System writes to Firestore /users/{uid}:
+   - If User selected "Student": It saves Shared Data + Student Data (starts with 0 XP).
+   - If User selected "Teacher": It saves Shared Data + Teacher Data (Subject, etc.).
+5. System reserves the username in /usernames.
+6. User is redirected:
+   - Students -> /student/dashboard
+   - Teachers -> /teacher/dashboard
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

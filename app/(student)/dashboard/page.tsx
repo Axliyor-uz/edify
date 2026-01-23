@@ -3,382 +3,443 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile } from '@/services/userService';
-import { getUserHistory, QuizAttempt } from '@/services/historyService';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { 
   Trophy, Flame, Target, ArrowRight, BookOpen, Star, 
-  Edit2, CheckCircle, Zap, TrendingUp, Activity, Sparkles 
+  Edit2, CheckCircle, Zap, TrendingUp, Activity, Sparkles, Clock, School
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// --- TYPES ---
 interface UserProfile {
   displayName: string;
-  email: string;
   totalXP: number;
   currentStreak: number;
-  level: number;
   dailyGoal: number;
   dailyHistory: Record<string, number>;
 }
 
-export default function Dashboard() {
+interface UpcomingTask {
+  assignmentId: string;
+  classId: string;
+  title: string;
+  className: string;
+  dueAt: any;
+}
+
+// Floating Particles Background (same as Classes page)
+const FloatingParticles = () => {
+  const particles = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 4 + 2,
+    duration: Math.random() * 20 + 10,
+    delay: Math.random() * 5,
+    opacity: Math.random() * 0.6 + 0.2,
+  }));
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full bg-gradient-to-r from-blue-400 to-purple-400"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            opacity: particle.opacity,
+          }}
+          animate={{
+            y: [0, -100, 0],
+            x: [0, Math.sin(particle.id) * 50, 0],
+            opacity: [particle.opacity, particle.opacity * 0.1, particle.opacity],
+          }}
+          transition={{
+            duration: particle.duration,
+            delay: particle.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Glowing Orb (same as Classes page)
+const GlowingOrb = ({ color, size, position }: { color: string; size: number; position: { x: string; y: string } }) => {
+  return (
+    <motion.div
+      className={`absolute rounded-full ${color} blur-3xl opacity-20`}
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        left: position.x,
+        top: position.y,
+      }}
+      animate={{
+        scale: [1, 1.5, 1],
+        opacity: [0.2, 0.4, 0.2],
+      }}
+      transition={{
+        duration: 4,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    />
+  );
+};
+
+export default function StudentDashboard() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [lastAttempt, setLastAttempt] = useState<QuizAttempt | null>(null);
-  const [loading, setLoading] = useState(true);
   
-  // Goal Editing State
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [nextTask, setNextTask] = useState<UpcomingTask | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [newGoal, setNewGoal] = useState(100);
 
-  // 1. LOAD DATA (Profile + History)
   useEffect(() => {
-    async function loadStats() {
-      if (user) {
-        try {
-          const profileData = await getUserProfile(user.uid, user.email || '', user.displayName || 'Student');
-          if (!profileData.dailyGoal) profileData.dailyGoal = 100;
-          setProfile(profileData as UserProfile);
-          setNewGoal(profileData.dailyGoal || 100);
+    async function loadDashboardData() {
+      if (!user) return;
 
-          const historyData = await getUserHistory(user.uid);
-          if (historyData && historyData.length > 0) {
-            setLastAttempt(historyData[0]); 
-          }
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          const data = userSnap.data() as UserProfile;
+          setProfile({
+            displayName: data.displayName || user.displayName || 'Student',
+            totalXP: data.totalXP || 0,
+            currentStreak: data.currentStreak || 0,
+            dailyGoal: data.dailyGoal || 100,
+            dailyHistory: data.dailyHistory || {}
+          });
+          setNewGoal(data.dailyGoal || 100);
+        } else {
+          setProfile({
+            displayName: user.displayName || 'Student',
+            totalXP: 0,
+            currentStreak: 0,
+            dailyGoal: 100,
+            dailyHistory: {}
+          });
         }
+
+        const enrolledQ = collection(db, `users/${user.uid}/enrolled_classes`);
+        const enrolledSnap = await getDocs(enrolledQ);
+        const classIds = enrolledSnap.docs.map(d => d.id);
+
+        if (classIds.length > 0) {
+           let foundTask: UpcomingTask | null = null;
+           
+           for (const clsId of classIds) {
+             const assignQ = query(
+               collection(db, `classes/${clsId}/assignments`),
+               where('status', '==', 'active'),
+               orderBy('dueAt', 'asc'),
+               limit(1)
+             );
+             const assignSnap = await getDocs(assignQ);
+             if (!assignSnap.empty) {
+                const aData = assignSnap.docs[0].data();
+                const attemptQ = query(
+                    collection(db, 'attempts'), 
+                    where('assignmentId', '==', assignSnap.docs[0].id),
+                    where('userId', '==', user.uid)
+                );
+                const attemptSnap = await getDocs(attemptQ);
+                
+                if(attemptSnap.empty) {
+                   foundTask = {
+                     assignmentId: assignSnap.docs[0].id,
+                     classId: clsId,
+                     title: aData.title,
+                     className: "Mathematics",
+                     dueAt: aData.dueAt
+                   };
+                   break;
+                }
+             }
+           }
+           setNextTask(foundTask);
+        }
+
+      } catch (error) {
+        console.error("Error loading dashboard:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    loadStats();
+    loadDashboardData();
   }, [user]);
 
-  // 2. CALCULATIONS
   const todayKey = new Date().toISOString().split('T')[0];
   const todayXP = profile?.dailyHistory?.[todayKey] || 0;
   const dailyGoal = profile?.dailyGoal || 100;
   const progressPercent = Math.min(Math.round((todayXP / dailyGoal) * 100), 100);
   
-  const currentLevel = Math.floor((profile?.totalXP || 0) / 100) + 1;
-  const xpForNextLevel = currentLevel * 100;
-  const xpProgress = (profile?.totalXP || 0) % 100;
+  const currentLevel = Math.floor((profile?.totalXP || 0) / 1000) + 1;
+  const xpForNextLevel = currentLevel * 1000;
+  const xpProgress = (profile?.totalXP || 0) % 1000;
 
-  // 3. SAVE GOAL
-  const saveGoal = async (goal: number) => {
-    if (!user || !profile) return;
-    try {
-      setProfile({ ...profile, dailyGoal: goal });
-      setIsEditingGoal(false);
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { dailyGoal: goal });
-    } catch (e) {
-      console.error("Failed to save goal", e);
-    }
+  const saveGoal = (goal: number) => {
+    setProfile(prev => prev ? ({ ...prev, dailyGoal: goal }) : null);
+    setIsEditingGoal(false);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600" size={24} />
-          </div>
-          <p className="mt-4 text-slate-600 font-semibold">Loading your dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+        <FloatingParticles />
+        <div className="text-center relative z-10">
+          <div className="w-20 h-20 border-4 border-slate-700 border-t-blue-500 rounded-full mx-auto animate-spin"></div>
+          <p className="mt-6 text-slate-300 font-bold text-lg">Loading Student Hub...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
+      {/* Background */}
+      <FloatingParticles />
+      <GlowingOrb color="bg-blue-500" size={300} position={{ x: '10%', y: '20%' }} />
+      <GlowingOrb color="bg-purple-500" size={400} position={{ x: '85%', y: '15%' }} />
+      <GlowingOrb color="bg-orange-500" size={250} position={{ x: '70%', y: '80%' }} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-12 relative z-10">
         
-        {/* 1. WELCOME HEADER - Enhanced with gradient and animations */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 animate-in fade-in slide-in-from-top duration-700">
+        {/* WELCOME HEADER */}
+        <motion.div 
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="space-y-2">
-            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
-              Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient">
-                {profile?.displayName || user?.displayName || 'Student'}
-              </span>! 
-              <span className="inline-block animate-wave ml-2">👋</span>
+            <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight">
+              Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                {profile?.displayName}
+              </span>! 👋
             </h1>
-            <p className="text-slate-600 font-medium flex items-center gap-2 text-lg">
-              <Activity size={18} className="text-blue-500 animate-pulse" />
-              Let's keep your momentum going. You're doing great!
+            <p className="text-slate-400 font-semibold flex items-center gap-2 text-lg">
+              <Activity size={20} className="text-blue-400" />
+              Your academic dashboard is ready. Let's learn!
             </p>
           </div>
           <div className="flex gap-3">
-            <Link 
-              href="/profile" 
-              className="px-6 py-3 bg-white/80 backdrop-blur-sm border-2 border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-white hover:border-slate-300 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+            <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
+              <Link 
+                href="/history" 
+                className="px-6 py-3 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 text-slate-300 font-bold rounded-xl hover:bg-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-700/50 transition-all"
+              >
+                Past Results
+              </Link>
+            </motion.button>
+            <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
+              <Link 
+                href="/classes" 
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/40 hover:shadow-2xl transition-all flex items-center gap-2"
+              >
+                <School size={20} /> My Classes
+              </Link>
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* STATS GRID */}
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          {[
+            { icon: <Trophy size={28} />, value: (profile?.totalXP || 0).toLocaleString(), label: "Total XP Earned", color: "blue" },
+            { icon: <Flame size={28} />, value: `${profile?.currentStreak || 0} days`, label: "Active Streak", color: "orange" },
+            { icon: <Star size={28} />, value: `Level ${currentLevel}`, label: "Current Level", color: "purple", sub: `${xpProgress}/${xpForNextLevel} XP` },
+            { icon: <Target size={20} />, value: `${todayXP} / ${dailyGoal} XP`, label: "Daily Goal", color: "blue", progress: progressPercent }
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-${stat.color}-500/30 shadow-2xl relative overflow-hidden group`}
+              whileHover={{ y: -8, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
             >
-              View Profile
-            </Link>
-            <Link 
-              href={lastAttempt ? `/practice/${encodeURIComponent(lastAttempt.subtopicName)}` : "/syllabus"} 
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-            >
-              <Zap size={18} className="animate-pulse" /> 
-              {lastAttempt ? "Resume Learning" : "Start Learning"}
-            </Link>
-          </div>
-        </div>
-
-        {/* 2. MAIN STATS GRID - Enhanced cards with better gradients */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom duration-700">
-          
-          {/* Total XP - Blue Theme */}
-          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl border-2 border-blue-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-            <div className="relative">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                  <Trophy size={28} />
-                </div>
-              </div>
-              <div>
-                <p className="text-4xl font-black text-slate-900 mb-1">{(profile?.totalXP || 0).toLocaleString()}</p>
-                <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Total XP Earned</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Current Streak - Orange Theme */}
-          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl border-2 border-orange-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-orange-400 to-orange-600 opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-            <div className="relative">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                  <Flame size={28} />
-                </div>
-              </div>
-              <div>
-                <p className="text-4xl font-black text-slate-900 mb-1">
-                  {profile?.currentStreak || 0} <span className="text-xl text-slate-400 font-semibold">days</span>
-                </p>
-                <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Current Streak</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Current Level - Purple Theme */}
-          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl border-2 border-purple-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-purple-400 to-purple-600 opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-            <div className="relative">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                  <Star size={28} />
-                </div>
-                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{xpProgress}/{xpForNextLevel} XP</span>
-              </div>
-              <div>
-                <p className="text-4xl font-black text-slate-900 mb-3">Level {currentLevel}</p>
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-1000" style={{ width: `${xpProgress}%` }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* DAILY GOAL CARD - Enhanced Dark Theme */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 rounded-3xl shadow-2xl text-white relative overflow-hidden group border-2 border-slate-700 hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500 opacity-20 blur-3xl rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-500"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500 opacity-20 blur-3xl rounded-full -translate-x-10 translate-y-10 group-hover:scale-150 transition-transform duration-500"></div>
-            
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <Target className="text-blue-400" size={20} />
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-transparent opacity-0 group-hover:opacity-10 transition-opacity"></div>
+              <div className="relative">
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-3 bg-gradient-to-br from-${stat.color}-500 to-${stat.color}-600 rounded-xl text-white`}>
+                    {stat.icon}
                   </div>
-                  <span className="font-bold text-sm text-blue-300 uppercase tracking-wide">Daily Goal</span>
+                  {stat.sub && <span className={`text-xs font-bold text-${stat.color}-300 bg-${stat.color}-500/20 px-2 py-1 rounded-full`}>{stat.sub}</span>}
                 </div>
-                <button 
-                  onClick={() => setIsEditingGoal(true)} 
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all hover:scale-110"
-                >
-                  <Edit2 size={16} />
-                </button>
+                <p className="text-3xl font-black text-white mb-1">{stat.value}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</p>
+                
+                {stat.progress !== undefined && (
+                  <div className="mt-3 w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                    <motion.div 
+                      className={`h-full rounded-full bg-gradient-to-r from-${stat.color}-500 to-${stat.color}-600`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${stat.progress}%` }}
+                      transition={{ duration: 1 }}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="mt-6">
-                <div className="flex items-end gap-2 mb-2">
-                  <span className="text-4xl font-black">{todayXP}</span>
-                  <span className="text-base font-medium text-slate-400 mb-1">/ {dailyGoal} XP</span>
-                </div>
-                <div className="w-full h-3 bg-slate-700/50 rounded-full overflow-hidden backdrop-blur-sm shadow-inner">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-1000 shadow-lg ${progressPercent >= 100 ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'}`} 
-                    style={{ width: `${progressPercent}%` }}
-                  ></div>
-                </div>
-                <p className="text-sm text-slate-300 mt-2 font-semibold flex items-center gap-1">
-                  {progressPercent >= 100 ? (
-                    <>🎉 Goal Reached! Amazing work!</>
-                  ) : (
-                    <>{Math.round(progressPercent)}% complete. Keep pushing!</>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
-        {/* 3. DYNAMIC LEARNING SECTION - Enhanced with better gradients */}
-        <div className="grid lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom duration-700 delay-100">
-          
-          {/* Main Action Card */}
-          <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm border-2 border-blue-100 rounded-3xl p-8 relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400 to-indigo-500 opacity-5 rounded-full translate-x-32 -translate-y-32 group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-400 to-purple-500 opacity-5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            
+        {/* ACTION SECTION */}
+        <motion.div 
+          className="grid lg:grid-cols-3 gap-5"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <motion.div 
+            className="lg:col-span-2 bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 relative overflow-hidden group"
+            whileHover={{ y: -5 }}
+          >
             <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-full text-xs font-bold mb-6 shadow-lg">
-                <TrendingUp size={14} /> 
-                {lastAttempt ? "Recommended Next Step" : "Start Your Journey"}
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-full text-xs font-bold mb-5">
+                {nextTask ? <Clock size={14} /> : <Sparkles size={14} />} 
+                {nextTask ? "Upcoming Deadline" : "You're All Caught Up!"}
               </div>
               
-              <h2 className="text-3xl font-black text-slate-900 mb-3 leading-tight">
-                {lastAttempt ? lastAttempt.subtopicName : "Welcome to MathMaster!"}
+              <h2 className="text-3xl font-black text-white mb-3">
+                {nextTask ? nextTask.title : "Ready for a Challenge?"}
               </h2>
               
-              <p className="text-slate-600 mb-8 max-w-lg leading-relaxed text-lg">
-                {lastAttempt 
-                  ? "Continue exactly where you left off. Review your last session or try a harder difficulty to master this topic."
-                  : "Select a topic from the syllabus to begin your first streak. Logic and Sets are great places to start!"
+              <p className="text-slate-400 mb-6 max-w-lg text-lg">
+                {nextTask 
+                  ? "This test is your next priority. Complete it to keep your streak alive and earn XP."
+                  : "No pending assignments! Browse your classes to review or improve your scores."
                 }
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <Link 
-                  href={lastAttempt ? `/practice/${encodeURIComponent(lastAttempt.subtopicName)}` : "/syllabus"}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-xl shadow-blue-200 hover:shadow-2xl hover:-translate-y-0.5 flex items-center gap-2"
-                >
-                  {lastAttempt ? "Continue Practice" : "Explore Syllabus"} 
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-                {lastAttempt && (
+                <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
                   <Link 
-                    href="/syllabus"
-                    className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2"
+                    href={nextTask ? `/classes/${nextTask.classId}/test/${nextTask.assignmentId}` : "/classes"}
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl flex items-center gap-2"
                   >
-                    <BookOpen size={20} />
-                    Browse All Topics
+                    {nextTask ? "Start Test Now" : "Browse Classes"} <ArrowRight size={20} />
                   </Link>
-                )}
+                </motion.button>
+                
+                <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
+                  <Link 
+                    href="/classes"
+                    className="px-8 py-4 bg-slate-700/50 border-2 border-slate-600 text-slate-300 font-bold rounded-xl hover:bg-slate-700 hover:border-slate-500 flex items-center gap-2"
+                  >
+                    <School size={20} /> View All Classes
+                  </Link>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Activity Heatmap - Enhanced */}
-          <div className="bg-white/80 backdrop-blur-sm border-2 border-orange-100 rounded-3xl p-6 flex flex-col justify-between hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-orange-400 to-orange-600 opacity-5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+          {/* Activity Heatmap */}
+          <motion.div 
+            className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 flex flex-col justify-between group"
+            whileHover={{ y: -5 }}
+          >
+            <h3 className="font-black text-white mb-5 flex items-center gap-2 text-lg">
+              <Activity size={20} className="text-orange-400" /> Activity Streak
+            </h3>
             
-            <div className="relative z-10">
-              <h3 className="font-black text-slate-800 mb-6 flex items-center gap-2 text-lg">
-                <div className="p-2 bg-orange-100 rounded-xl">
-                  <Activity size={20} className="text-orange-600" />
-                </div>
-                Activity Streak
-              </h3>
-              
-              <div className="flex gap-1.5 h-32 items-end justify-between px-1">
-                {[...Array(14)].map((_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - (13 - i));
-                  const key = d.toISOString().split('T')[0];
-                  const xp = profile?.dailyHistory?.[key] || 0;
-                  const isToday = i === 13;
-                  
-                  const heightPercent = Math.min((xp / 200) * 100, 100); 
-                  
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-1 group/bar w-full relative" title={`${key}: ${xp} XP`}>
-                      <div 
-                        className={`w-full rounded-lg transition-all duration-300 hover:opacity-80 shadow-sm ${
-                          isToday 
-                            ? 'bg-gradient-to-t from-blue-600 to-blue-500' 
-                            : xp > 0 
-                              ? 'bg-gradient-to-t from-blue-300 to-blue-400' 
-                              : 'bg-slate-200'
-                        }`} 
-                        style={{ height: `${heightPercent || 12}%` }}
-                      ></div>
-                      {isToday && (
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                          Today
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              
-              <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase mt-4 px-1">
-                <span>2 Weeks Ago</span>
-                <span>Today</span>
-              </div>
+            <div className="flex gap-1.5 h-28 items-end justify-between">
+              {[...Array(14)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (13 - i));
+                const key = d.toISOString().split('T')[0];
+                const xp = profile?.dailyHistory?.[key] || 0;
+                const isToday = i === 13;
+                const height = Math.max((xp / 200) * 100, 10);
+                
+                return (
+                  <div key={i} className="w-full flex flex-col items-center gap-1" title={`${key}: ${xp} XP`}>
+                    <div 
+                      className={`w-full rounded-t-lg ${
+                        isToday ? 'bg-blue-500' : xp > 0 ? 'bg-blue-600/70' : 'bg-slate-700/50'
+                      }`}
+                      style={{ height: `${height}%` }}
+                    />
+                    {isToday && <span className="text-[10px] text-blue-400 font-bold">Today</span>}
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* 4. GOAL EDITING MODAL - Enhanced */}
-        {isEditingGoal && (
-          <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300 border-2 border-slate-200">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-blue-100 rounded-2xl">
-                  <Target className="text-blue-600" size={24} />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900">Set Daily Goal</h3>
-              </div>
-              
-              <p className="text-slate-600 mb-6">Choose a daily XP target that challenges you!</p>
-              
-              <div className="space-y-3">
+        {/* MODAL */}
+        <AnimatePresence>
+          {isEditingGoal && (
+            <motion.div 
+              className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-slate-700 rounded-2xl p-8 w-full max-w-md shadow-2xl"
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              >
+                <h3 className="text-2xl font-black text-white mb-2">Set Daily Goal</h3>
+                <p className="text-slate-400 mb-6">Choose a daily XP target that challenges you!</p>
+                
                 {[
-                  { xp: 50, label: 'Casual', emoji: '😌', color: 'green' },
-                  { xp: 100, label: 'Regular', emoji: '🎯', color: 'blue' },
-                  { xp: 200, label: 'Serious', emoji: '🔥', color: 'orange' },
-                  { xp: 500, label: 'Insane', emoji: '⚡', color: 'purple' }
-                ].map(({ xp, label, emoji, color }) => (
-                  <button
+                  { xp: 50, label: 'Casual', emoji: '😌' },
+                  { xp: 100, label: 'Regular', emoji: '🎯' },
+                  { xp: 200, label: 'Serious', emoji: '🔥' },
+                  { xp: 500, label: 'Insane', emoji: '⚡' }
+                ].map(({ xp, label, emoji }) => (
+                  <motion.button
                     key={xp}
                     onClick={() => saveGoal(xp)}
-                    className={`w-full p-5 rounded-2xl border-2 text-left transition-all flex justify-between items-center group hover:scale-[1.02] ${
+                    className={`w-full p-4 rounded-xl border-2 mb-3 text-left ${
                       newGoal === xp 
-                        ? `border-${color}-500 bg-${color}-50 shadow-lg` 
-                        : 'border-slate-200 hover:border-slate-300 hover:shadow-md bg-white'
+                        ? 'border-blue-500 bg-blue-500/20' 
+                        : 'border-slate-700 hover:border-slate-600 bg-slate-900/50'
                     }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">{emoji}</span>
-                      <div>
-                        <span className="block font-black text-xl text-slate-900">{xp} XP</span>
-                        <span className="text-sm text-slate-500 font-semibold">{label}</span>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{emoji}</span>
+                        <div>
+                          <div className="font-black text-white">{xp} XP</div>
+                          <div className="text-sm text-slate-400">{label}</div>
+                        </div>
                       </div>
+                      {newGoal === xp && <CheckCircle className="text-blue-400" size={20} />}
                     </div>
-                    {newGoal === xp && (
-                      <div className={`p-2 bg-${color}-500 rounded-full`}>
-                        <CheckCircle size={20} className="text-white" />
-                      </div>
-                    )}
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
-              
-              <button 
-                onClick={() => setIsEditingGoal(false)} 
-                className="w-full mt-6 py-4 text-slate-600 font-bold hover:bg-slate-100 rounded-2xl transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
+                
+                <button 
+                  onClick={() => setIsEditingGoal(false)} 
+                  className="w-full mt-4 py-3 text-slate-400 font-bold rounded-xl"
+                >
+                  Cancel
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

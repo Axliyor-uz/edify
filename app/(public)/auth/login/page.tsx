@@ -5,29 +5,49 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { getUserProfile } from '@/services/userService'; 
+import { Loader2, Mail, Lock, LogIn, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // 🟢 NEW: State for password visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Welcome back!');
-      router.push('/dashboard');
+      // 1. Authenticate with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Fetch User Role from Firestore
+      const profile = await getUserProfile(user.uid);
+
+      toast.success(`Welcome back, ${profile?.displayName || 'User'}!`);
+
+      // 3. Smart Redirect based on Role
+      if (profile?.role === 'teacher') {
+        router.push('/teacher/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/invalid-credential') {
         toast.error('Invalid email or password.');
+      } else if (error.code === 'auth/user-not-found') {
+        toast.error('No account found with this email.');
       } else {
-        toast.error('Something went wrong. Please try again.');
+        toast.error('Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -38,61 +58,85 @@ export default function LoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <Toaster position="top-center" />
       
-      <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-8 rounded-[2rem] shadow-2xl shadow-purple-900/20"
+      >
+        
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-black text-slate-900">Welcome back</h1>
-          <p className="text-slate-500 mt-2">Enter your details to access your account.</p>
+          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-purple-500/20">
+            <LogIn size={24} />
+          </div>
+          <h1 className="text-3xl font-black text-white tracking-tight">Welcome Back</h1>
+          <p className="text-slate-400 mt-2 font-medium">Enter your credentials to access your account.</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-5">
           
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-3.5 text-slate-400" size={18} />
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Email Address</label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
               <input 
                 type="email" 
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition font-medium"
+                placeholder="name@school.com"
+                className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none transition-all font-medium"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-3.5 text-slate-400" size={18} />
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Password</label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
+              
               <input 
-                type="password" 
+                type={showPassword ? 'text' : 'password'} // 🟢 Dynamic Type
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition font-medium"
+                className="w-full pl-12 pr-12 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none transition-all font-medium"
               />
+
+              {/* 🟢 Show/Hide Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 text-slate-500 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4"
+            className="w-full group relative overflow-hidden bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 mt-6"
           >
-            {loading ? <Loader2 className="animate-spin" /> : 'Sign In'}
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? <Loader2 className="animate-spin" /> : <>Sign In <ChevronRight size={18}/></>}
+            </span>
+            {/* Button Shine Effect */}
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </button>
 
         </form>
 
-        <div className="mt-8 text-center text-sm text-slate-500">
+        <div className="mt-8 text-center text-sm text-slate-400 font-medium">
           Don't have an account?{' '}
-          <Link href="/auth/signup" className="text-blue-600 font-bold hover:underline">
+          <Link href="/auth/signup" className="text-cyan-400 font-bold hover:text-cyan-300 hover:underline transition-colors">
             Create one for free
           </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

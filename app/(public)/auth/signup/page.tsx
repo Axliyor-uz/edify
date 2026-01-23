@@ -4,59 +4,64 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, writeBatch } from 'firebase/firestore'; // 👈 Import writeBatch for atomic saves
+import { doc, writeBatch } from 'firebase/firestore'; 
 import { auth, db } from '@/lib/firebase';
-import { checkUsernameUnique, UserProfile } from '@/services/userService';
-import { Loader2, ArrowRight, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { checkUsernameUnique } from '@/services/userService'; 
+import { 
+  Loader2, ArrowRight, ArrowLeft, CheckCircle, XCircle, 
+  GraduationCap, School, User, Mail, Lock, MapPin, 
+  Building2, BookOpen, Eye, EyeOff 
+} from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
-// --- DATA: Uzbekistan Regions & Districts ---
+// --- DATA: Expanded Uzbekistan Regions (Unchanged) ---
 const UZB_LOCATIONS: Record<string, string[]> = {
-  "Tashkent City": ["Chilanzar", "Yunusabad", "Mirzo Ulugbek", "Yashnobod", "Sergeli", "Bektemir", "Uchtepa", "Shaykhantakhur", "Almazar", "Yakkasaray", "Mirobod"],
-  "Tashkent Region": ["Chirchik", "Angren", "Almalyk", "Yangiyo'l", "Bekabad", "Parkent", "Buka", "Chinaz"],
-  "Samarkand": ["Samarkand City", "Urgut", "Ishtikhon", "Kattaqo'rg'on", "Pastdargom"],
-  "Bukhara": ["Bukhara City", "Gijduvan", "Kogon", "Vobkent"],
-  "Andijan": ["Andijan City", "Asaka", "Shahrixon"],
-  "Fergana": ["Fergana City", "Margilan", "Kokand", "Rishton"],
-  "Namangan": ["Namangan City", "Chust", "Kosonsoy"],
-  "Khorezm": ["Urgench", "Khiva", "Shovot"],
-  "Navoi": ["Navoi City", "Zarafshan", "Uchquduq"],
-  "Kashkadarya": ["Karshi", "Shakhrisabz", "Kitob"],
-  "Surkhandarya": ["Termez", "Denau", "Sherobod"],
-  "Jizzakh": ["Jizzakh City", "Zomin", "Gallaorol"],
+  "Tashkent City": ["Chilanzar", "Yunusabad", "Mirzo Ulugbek", "Yashnobod", "Sergeli", "Bektemir", "Uchtepa", "Shaykhantakhur", "Almazar", "Yakkasaray", "Mirobod", "Yangihayot"],
+  "Tashkent Region": ["Chirchik", "Angren", "Almalyk", "Yangiyo'l", "Bekabad", "Parkent", "Buka", "Chinaz", "Kibray", "Zangiota"],
+  "Samarkand": ["Samarkand City", "Urgut", "Ishtikhon", "Kattaqo'rg'on", "Pastdargom", "Bulungur"],
+  "Bukhara": ["Bukhara City", "Gijduvan", "Kogon", "Vobkent", "Jondor"],
+  "Andijan": ["Andijan City", "Asaka", "Shahrixon", "Baliqchi"],
+  "Fergana": ["Fergana City", "Kokand", "Margilan", "Rishton"],
+  "Namangan": ["Namangan City", "Chust", "Kosonsoy", "To'raqo'rg'on"],
+  "Khorezm": ["Urgench", "Khiva", "Shovot", "Gurlan"],
+  "Kashkadarya": ["Karshi", "Shahrisabz", "Kitob", "Koson"],
+  "Surkhandarya": ["Termez", "Denau", "Sherobod", "Boysun"],
+  "Navoi": ["Navoi City", "Zarafshan", "Uchquduq", "Karmana"],
+  "Jizzakh": ["Jizzakh City", "Zaamin", "Gallaorol"],
   "Syrdarya": ["Gulistan", "Yangiyer", "Sirdaryo"],
-  "Karakalpakstan": ["Nukus", "Turtkul", "Beruniy"]
+  "Karakalpakstan": ["Nukus", "Turtkul", "Beruniy", "Kungrad"]
 };
 
-// --- HELPER: Manual Phone Formatter (Fixes crash) ---
+// --- HELPER: Phone Formatter ---
 const formatPhoneNumber = (value: string) => {
-  const numbers = value.replace(/\D/g, ''); // Strip non-digits
-  
-  // If user clears input, reset to prefix
+  const numbers = value.replace(/\D/g, ''); 
   if (numbers.length === 0) return '+998 ';
-
   let formatted = '+998 ';
-  // If input starts with 998, strip it to avoid duplication
   const inputNumbers = numbers.startsWith('998') ? numbers.slice(3) : numbers;
-
-  if (inputNumbers.length > 0) formatted += `(${inputNumbers.slice(0, 2)}`;
+  if (inputNumbers.length > 0) formatted += ` (${inputNumbers.slice(0, 2)}`;
   if (inputNumbers.length >= 2) formatted += `) ${inputNumbers.slice(2, 5)}`;
   if (inputNumbers.length >= 5) formatted += `-${inputNumbers.slice(5, 7)}`;
   if (inputNumbers.length >= 7) formatted += `-${inputNumbers.slice(7, 9)}`;
-
   return formatted;
 };
 
 export default function SignupPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   
-  // Username Check State
+  // State
+  const [step, setStep] = useState(0); // 0 = Role Selection
+  const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  
+  // 🟢 NEW: Password Visibility
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Username Check
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
 
-  // Form State
+  // Form Data
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -69,296 +74,358 @@ export default function SignupPage() {
     region: '',
     district: '',
     institutionName: '',
-    gradeLevel: '',
+    gradeLevel: '', // Students only
+    schoolSubject: '', // Teachers only
   });
 
-  // Handle Input Changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
-
-    // Apply Phone Mask Logic
     if (name === 'phone') {
-        // Prevent deleting the prefix
         if (value.length < 5) value = '+998 ';
         else value = formatPhoneNumber(value);
     }
-
     setFormData({ ...formData, [name]: value });
   };
 
-  // --- 1. USERNAME DEBOUNCE LOGIC ---
+  // 1. USERNAME CHECK
   useEffect(() => {
     const check = async () => {
       if (formData.username.length < 3) {
-        setUsernameAvailable(null);
-        return;
+        setUsernameAvailable(null); return;
       }
       setIsCheckingUser(true);
       try {
         const isUnique = await checkUsernameUnique(formData.username);
         setUsernameAvailable(isUnique);
-      } catch (error: any) {
-        console.error("Check failed", error);
-        // Fallback if permission denied (though rules should be fixed)
-        if(error.code === 'permission-denied') setUsernameAvailable(true);
+      } catch (error) {
+        setUsernameAvailable(true); // Fail open if service fails
       } finally {
         setIsCheckingUser(false);
       }
     };
-
     const timeoutId = setTimeout(check, 500);
     return () => clearTimeout(timeoutId);
   }, [formData.username]);
 
-
-  // --- 2. STEP VALIDATION ---
+  // 2. VALIDATION
   const handleNext = () => {
     if (step === 1) {
-      if (!formData.email || !formData.username || !formData.password) return toast.error('Please fill all fields');
+      if (!formData.email || !formData.username || !formData.password) return toast.error('Fill all fields');
       if (formData.password !== formData.confirmPassword) return toast.error('Passwords do not match');
-      if (formData.password.length < 6) return toast.error('Password must be 6+ chars');
+      if (formData.password.length < 6) return toast.error('Password too short (min 6)');
       if (usernameAvailable === false) return toast.error('Username is taken');
     }
     if (step === 2) {
-      if (!formData.fullName || !formData.birthDate || !formData.phone) return toast.error('Please fill personal details');
-      if (formData.phone.length < 19) return toast.error('Please enter a complete phone number');
+      if (!formData.fullName || !formData.birthDate || !formData.phone) return toast.error('Fill personal info');
+      if (formData.phone.length < 17) return toast.error('Invalid phone number');
     }
     if (step === 3) {
-      if (!formData.region || !formData.district) return toast.error('Please select location');
+      if (!formData.region || !formData.district) return toast.error('Select location');
     }
-    setStep((prev) => prev + 1);
+    setStep(prev => prev + 1);
   };
 
-  // --- 3. SUBMISSION (Using "Phonebook" Batch Write) ---
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 3. SUBMIT
+  const handleSignup = async () => {
     setLoading(true);
-
     try {
       // A. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
-
-      // B. Update Auth Profile
       await updateProfile(user, { displayName: formData.fullName });
 
-      // C. PREPARE BATCH WRITE (Atomic Operation)
+      // B. Prepare Database Batch
       const batch = writeBatch(db);
-
-      // 1. User Profile Reference (Private Data)
       const userRef = doc(db, 'users', user.uid);
-      const newProfile: UserProfile = {
+      
+      // C. Construct Profile
+      const newProfile: any = {
         uid: user.uid,
         email: formData.email,
-        username: formData.username.toLowerCase(), // Store lowercase
+        username: formData.username.toLowerCase(),
         displayName: formData.fullName,
         phone: formData.phone,
         birthDate: formData.birthDate,
+        role: role,
+        institution: formData.institutionName,
         location: {
           country: formData.country,
           region: formData.region,
           district: formData.district,
         },
-        education: {
-          institution: formData.institutionName,
-          grade: formData.gradeLevel,
-        },
-        // Gamification Defaults
-        totalXP: 0,
-        currentStreak: 0,
-        level: 1,
-        lastStudyDate: '',
-        dailyHistory: {},
-        progress: {
-          completedTopicIndex: 0,
-          completedChapterIndex: 0,
-          completedSubtopicIndex: 0
-        },
         createdAt: new Date().toISOString(),
-        role: 'student'
       };
-      batch.set(userRef, newProfile);
 
-      // 2. Username Reservation Reference (Public Lookup)
+      // D. Role Specific Logic
+      if (role === 'student') {
+        newProfile.grade = formData.gradeLevel; 
+        newProfile.totalXP = 0;
+        newProfile.currentStreak = 0;
+        newProfile.level = 1;
+        newProfile.dailyHistory = {};
+        newProfile.progress = { completedTopicIndex: 0, completedChapterIndex: 0, completedSubtopicIndex: 0 };
+      } else {
+        newProfile.grade = "Teacher"; 
+        newProfile.subject = formData.schoolSubject;
+        newProfile.verifiedTeacher = false;
+        newProfile.createdTests = [];
+      }
+
+      // E. Commit Data
+      batch.set(userRef, newProfile);
       const usernameRef = doc(db, 'usernames', formData.username.toLowerCase());
       batch.set(usernameRef, { uid: user.uid });
 
-      // D. Commit Batch
       await batch.commit();
-
-      toast.success('Account created! Redirecting...');
-      router.push('/dashboard');
       
+      toast.success(`Welcome, ${role === 'teacher' ? 'Professor' : 'Student'}!`);
+      router.push(role === 'teacher' ? '/teacher/classes' : '/dashboard');
+
     } catch (error: any) {
       console.error(error);
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error('Email already registered.');
-      } else {
-        toast.error('Signup failed. Please try again.');
-      }
+      if (error.code === 'auth/email-already-in-use') toast.error('Email already in use.');
+      else toast.error('Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
       <Toaster position="top-center" />
       
-      <div className="w-full max-w-lg bg-white p-8 rounded-3xl border border-slate-100 shadow-xl">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-lg bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-8 rounded-[2rem] shadow-2xl shadow-purple-900/20"
+      >
+        
+        {/* HEADER */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-black text-slate-900">Create Account</h1>
-          <p className="text-slate-500 mt-1 text-sm">Step {step} of 4</p>
-          <div className="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
-            <div className="bg-blue-600 h-full transition-all duration-500 ease-out" style={{ width: `${step * 25}%` }}></div>
-          </div>
+          <h1 className="text-3xl font-black text-white tracking-tight">
+            {step === 0 ? "Choose your path" : "Create Account"}
+          </h1>
+          <p className="text-slate-400 mt-2 font-medium">
+            {step === 0 ? "Are you learning or teaching?" : `Step ${step} of 4`}
+          </p>
+          
+          {step > 0 && (
+            <div className="w-full bg-slate-800 h-2 rounded-full mt-6 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-500 ease-out" 
+                style={{ width: `${step * 25}%` }}
+              ></div>
+            </div>
+          )}
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()}>
-          
-          {/* STEP 1: ACCOUNT */}
-          {step === 1 && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right">
-              <h3 className="font-bold text-slate-800">Login Details</h3>
-              
-              <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition" />
-              
-              <div className="relative">
-                <input 
-                  name="username" type="text" placeholder="Unique Username" required value={formData.username} onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition pr-10
-                    ${usernameAvailable === true ? 'border-green-500 focus:border-green-500' : 
-                      usernameAvailable === false ? 'border-red-300 focus:border-red-500' : 
-                      'border-slate-100 focus:border-blue-500'}`}
-                />
-                <div className="absolute right-3 top-3.5">
-                  {isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> :
-                   usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> :
-                   usernameAvailable === false ? <XCircle className="text-red-500" size={20} /> : null}
-                </div>
+        {/* STEP 0: ROLE SELECTION */}
+        {step === 0 && (
+          <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <button 
+              onClick={() => { setRole('student'); setStep(1); }}
+              className="group p-6 rounded-2xl border border-slate-700 bg-slate-800/30 hover:bg-slate-800 hover:border-cyan-500/50 transition-all text-left flex items-center gap-5"
+            >
+              <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                <GraduationCap size={28} />
               </div>
-              {usernameAvailable === false && <p className="text-xs text-red-500 font-bold ml-1">Username is taken.</p>}
+              <div>
+                <h3 className="text-lg font-bold text-white group-hover:text-cyan-400">I am a Student</h3>
+                <p className="text-sm text-slate-400">I want to learn math, earn XP, and track my progress.</p>
+              </div>
+            </button>
 
-              <div className="grid grid-cols-2 gap-4">
-                <input name="password" type="password" placeholder="Password" required value={formData.password} onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition" />
-                <input name="confirmPassword" type="password" placeholder="Confirm" required value={formData.confirmPassword} onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition" />
+            <button 
+              onClick={() => { setRole('teacher'); setStep(1); }}
+              className="group p-6 rounded-2xl border border-slate-700 bg-slate-800/30 hover:bg-slate-800 hover:border-purple-500/50 transition-all text-left flex items-center gap-5"
+            >
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                <School size={28} />
               </div>
+              <div>
+                <h3 className="text-lg font-bold text-white group-hover:text-purple-400">I am a Teacher</h3>
+                <p className="text-sm text-slate-400">I want to create tests and manage my students.</p>
+              </div>
+            </button>
+            
+            <div className="mt-4 text-center">
+               <p className="text-sm text-slate-500">Already have an account? <Link href="/auth/login" className="text-cyan-400 font-bold hover:underline">Log in</Link></p>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* STEP 2: PERSONAL */}
-          {step === 2 && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right">
-              <h3 className="font-bold text-slate-800">Personal Info</h3>
-              <input name="fullName" type="text" placeholder="Full Name" required value={formData.fullName} onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition" />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 ml-1">Date of Birth</label>
-                  <input name="birthDate" type="date" required value={formData.birthDate} onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition text-slate-600" />
+        {/* FORM STEPS */}
+        {step > 0 && (
+          <form onSubmit={(e) => e.preventDefault()}>
+            
+            {/* STEP 1: LOGIN DETAILS */}
+            {step === 1 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
+                  <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none transition font-medium" />
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 ml-1">Phone Number</label>
+                
+                <div className="relative group">
+                  <User className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
                   <input 
-                    name="phone" 
-                    type="tel" 
-                    value={formData.phone} 
-                    onChange={handleChange} 
-                    placeholder="+998 (__) ___-__-__" 
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition"
+                    name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange}
+                    className={`w-full pl-12 pr-10 py-3.5 rounded-xl border-2 outline-none font-medium transition text-white bg-slate-800/50 placeholder:text-slate-600
+                      ${usernameAvailable === true ? 'border-green-500/50 focus:border-green-500' : 
+                        usernameAvailable === false ? 'border-red-500/50 focus:border-red-500' : 
+                        'border-slate-700/50 focus:border-cyan-500'}`}
                   />
+                  <div className="absolute right-4 top-3.5">
+                    {isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> :
+                     usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> :
+                     usernameAvailable === false ? <XCircle className="text-red-500" size={20} /> : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Password Field */}
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                    <input 
+                      name="password" 
+                      type={showPassword ? 'text' : 'password'} 
+                      placeholder="Password" 
+                      required 
+                      value={formData.password} 
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-8 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" 
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-3.5 text-slate-500 hover:text-white transition-colors"
+                    >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  
+                  {/* Confirm Password Field */}
+                  <div className="relative group">
+                    <input 
+                        name="confirmPassword" 
+                        type={showPassword ? 'text' : 'password'} 
+                        placeholder="Confirm" 
+                        required 
+                        value={formData.confirmPassword} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" 
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* STEP 3: LOCATION (DROPDOWNS) */}
-          {step === 3 && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right">
-              <h3 className="font-bold text-slate-800">Location</h3>
-              <input name="country" type="text" value="Uzbekistan" disabled
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-bold" />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <select name="region" value={formData.region} onChange={(e) => {
-                    setFormData({...formData, region: e.target.value, district: ''});
-                }}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none bg-white"
+            {/* STEP 2: PERSONAL */}
+            {step === 2 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <input name="fullName" type="text" placeholder="Full Name" required value={formData.fullName} onChange={handleChange}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">Date of Birth</label>
+                    <input name="birthDate" type="date" required value={formData.birthDate} onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">Phone</label>
+                    <input name="phone" type="tel" value={formData.phone} onChange={handleChange} placeholder="+998" 
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: LOCATION */}
+            {step === 3 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-3.5 text-slate-500" size={20} />
+                  <input name="country" type="text" value="Uzbekistan" disabled
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-slate-400 font-bold cursor-not-allowed" />
+                </div>
+                
+                <select name="region" value={formData.region} onChange={(e) => setFormData({...formData, region: e.target.value, district: ''})}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium"
                 >
                   <option value="">Select Region</option>
                   {Object.keys(UZB_LOCATIONS).map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
 
                 <select name="district" value={formData.district} onChange={handleChange} disabled={!formData.region}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none bg-white disabled:bg-slate-50"
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none disabled:opacity-50 font-medium"
                 >
                   <option value="">Select District</option>
-                  {formData.region && UZB_LOCATIONS[formData.region].map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {formData.region && UZB_LOCATIONS[formData.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* STEP 4: EDUCATION */}
-          {step === 4 && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right">
-              <h3 className="font-bold text-slate-800">Education</h3>
-              <input name="institutionName" type="text" placeholder="School / University Name" required value={formData.institutionName} onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition" />
-              
-              <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none bg-white text-slate-600"
-              >
-                <option value="">Select Grade / Year</option>
-                <option value="school_7">7th Grade</option>
-                <option value="school_8">8th Grade</option>
-                <option value="school_9">9th Grade</option>
-                <option value="school_10">10th Grade</option>
-                <option value="school_11">11th Grade</option>
-                <option value="uni_1">University - 1st Year</option>
-                <option value="uni_2">University - 2nd Year</option>
-                <option value="uni_3">University - 3rd Year</option>
-                <option value="uni_4">University - 4th Year</option>
-              </select>
+            {/* STEP 4: EDUCATION / WORK */}
+            {step === 4 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <div className="relative group">
+                  <Building2 className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
+                  <input name="institutionName" type="text" placeholder={role === 'student' ? "School / University Name" : "School / Organization Name"} required value={formData.institutionName} onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                </div>
+                
+                {role === 'student' ? (
+                  <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange}
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium"
+                  >
+                    <option value="">Select Grade / Year</option>
+                    <option value="school_7">7th Grade</option>
+                    <option value="school_8">8th Grade</option>
+                    <option value="school_9">9th Grade</option>
+                    <option value="school_10">10th Grade</option>
+                    <option value="school_11">11th Grade</option>
+                    <option value="uni_1">University - 1st Year</option>
+                    <option value="uni_2">University - 2nd Year</option>
+                    <option value="uni_3">University - 3rd Year</option>
+                    <option value="uni_4">University - 4th Year</option>
+                  </select>
+                ) : (
+                  <div className="relative group">
+                    <BookOpen className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
+                    <input name="schoolSubject" type="text" placeholder="Subject you teach (Optional)" value={formData.schoolSubject} onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                  </div>
+                )}
 
-              <div className="flex items-start gap-3 mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <input type="checkbox" required className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                <p className="text-xs text-slate-500">I agree to the <Link href="#" className="text-blue-600 underline">Terms</Link> and <Link href="#" className="text-blue-600 underline">Privacy Policy</Link>.</p>
+                <div className="flex items-start gap-3 mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-slate-300">
+                  <input type="checkbox" required className="mt-1 w-4 h-4 rounded cursor-pointer accent-cyan-500" />
+                  <p className="text-xs font-medium">I agree to the <Link href="#" className="underline hover:text-cyan-400">Terms of Service</Link> and <Link href="#" className="underline hover:text-cyan-400">Privacy Policy</Link>.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* CONTROLS */}
-          <div className="flex gap-3 mt-8">
-            {step > 1 && (
-              <button onClick={() => setStep(s => s - 1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 flex items-center gap-2">
+            {/* CONTROLS */}
+            <div className="flex gap-3 mt-8">
+              <button onClick={() => setStep(s => s - 1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition flex items-center gap-2">
                 <ArrowLeft size={18} /> Back
               </button>
-            )}
-            
-            {step < 4 ? (
-              <button onClick={handleNext} disabled={loading} className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-black flex items-center justify-center gap-2">
-                Next <ArrowRight size={18} />
-              </button>
-            ) : (
-              <button onClick={handleSignup} disabled={loading} className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 flex items-center justify-center gap-2">
-                {loading ? <Loader2 className="animate-spin" /> : 'Complete Registration'}
-              </button>
-            )}
-          </div>
-
-        </form>
-        <div className="mt-8 text-center text-sm text-slate-500">
-          Already have an account? <Link href="/auth/login" className="text-blue-600 font-bold hover:underline">Sign in</Link>
-        </div>
-      </div>
+              
+              {step < 4 ? (
+                <button onClick={handleNext} className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                  Next Step <ArrowRight size={18} />
+                </button>
+              ) : (
+                <button onClick={handleSignup} disabled={loading} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                  {loading ? <Loader2 className="animate-spin" /> : 'Complete Registration'}
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </motion.div>
     </div>
   );
 }

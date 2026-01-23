@@ -3,8 +3,8 @@
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import Navbar from '@/components/Navbar';
-import { Sparkles } from 'lucide-react';
+import StudentSidebar from '@/components/StudentSidebar';
+import { Loader2 } from 'lucide-react';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -18,14 +18,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-500" size={24} />
-          </div>
-          <p className="mt-4 text-slate-400 font-semibold">Loading...</p>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-400 gap-2">
+        <Loader2 className="animate-spin text-indigo-500" size={32} />
+        <span className="font-bold">Loading EdifyStudent...</span>
       </div>
     );
   }
@@ -33,14 +28,20 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   if (!user) return null; 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Top Navbar */}
-      <Navbar />
+    <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans">
       
-      {/* Main Content - No side padding, only top padding for navbar */}
-      <main className="pt-24">
+      {/* 1. SIDEBAR (Fixed Width: 18rem / 288px) */}
+      {/* The component handles fixed positioning internally for visual stability */}
+      <div className="w-0 md:w-72 shrink-0 transition-all duration-300">
+        <StudentSidebar />
+      </div>
+
+      {/* 2. MAIN CONTENT */}
+      {/* Flex-1 ensures it fills the remaining width. No padding here, content decides its own. */}
+      <main className="flex-1 min-w-0 overflow-x-hidden relative">
         {children}
       </main>
+
     </div>
   );
 }

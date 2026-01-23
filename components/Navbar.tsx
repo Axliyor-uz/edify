@@ -15,7 +15,8 @@ import UserSearchModal from '@/components/UserSearchModal';
 
 const menuItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Syllabus', href: '/syllabus', icon: BookOpen },
+  // 🟢 CHANGE: Renamed from 'Syllabus' to 'My Classes' to match the new page
+  { name: 'My Classes', href: '/classes', icon: BookOpen }, 
   { name: 'Leaderboard', href: '/leaderboard', icon: BarChart2 },
   { name: 'History', href: '/history', icon: History },
   { name: 'Profile', href: '/profile', icon: User },
