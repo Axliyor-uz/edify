@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, deleteUser } from 'firebase/auth';
 import { doc, writeBatch } from 'firebase/firestore'; 
 import { auth, db } from '@/lib/firebase';
 import { checkUsernameUnique } from '@/services/userService'; 
@@ -46,20 +46,35 @@ const formatPhoneNumber = (value: string) => {
   return formatted;
 };
 
+// --- HELPER: Password Validator ---
+const validatePassword = (pwd: string) => {
+  if (pwd.length < 8) return "Password must be at least 8 characters.";
+  if (!/[a-zA-Z]/.test(pwd)) return "Password must contain at least one letter.";
+  return null;
+};
+
+// --- HELPER: Telegram-Style Username Validator 🟢 ---
+const validateUsernameFormat = (username: string) => {
+  if (!username) return null;
+  if (username.length < 5) return "Min 5 characters.";
+  if (!/^[a-zA-Z]/.test(username)) return "Must start with a letter.";
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return "Only a-z, 0-9, and _ allowed.";
+  return null;
+};
+
 export default function SignupPage() {
   const router = useRouter();
   
   // State
-  const [step, setStep] = useState(0); // 0 = Role Selection
+  const [step, setStep] = useState(0); 
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<'student' | 'teacher'>('student');
-  
-  // 🟢 NEW: Password Visibility
   const [showPassword, setShowPassword] = useState(false);
 
   // Username Check
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null); // 🟢 New Error State
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -74,8 +89,8 @@ export default function SignupPage() {
     region: '',
     district: '',
     institutionName: '',
-    gradeLevel: '', // Students only
-    schoolSubject: '', // Teachers only
+    gradeLevel: '', 
+    schoolSubject: '', 
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -87,22 +102,35 @@ export default function SignupPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  // 1. USERNAME CHECK
+  // 1. USERNAME CHECK (With Rules)
   useEffect(() => {
     const check = async () => {
-      if (formData.username.length < 3) {
-        setUsernameAvailable(null); return;
+      // Reset states
+      setUsernameAvailable(null);
+      setUsernameError(null);
+
+      // A. Basic empty check
+      if (!formData.username) return;
+
+      // B. Format Check (Telegram Rules) 🟢
+      const formatError = validateUsernameFormat(formData.username);
+      if (formatError) {
+        setUsernameError(formatError);
+        return;
       }
+
+      // C. Database Uniqueness Check
       setIsCheckingUser(true);
       try {
         const isUnique = await checkUsernameUnique(formData.username);
         setUsernameAvailable(isUnique);
       } catch (error) {
-        setUsernameAvailable(true); // Fail open if service fails
+        setUsernameAvailable(true); // Fail open if service error (or handle strictly)
       } finally {
         setIsCheckingUser(false);
       }
     };
+
     const timeoutId = setTimeout(check, 500);
     return () => clearTimeout(timeoutId);
   }, [formData.username]);
@@ -110,17 +138,24 @@ export default function SignupPage() {
   // 2. VALIDATION
   const handleNext = () => {
     if (step === 1) {
-      if (!formData.email || !formData.username || !formData.password) return toast.error('Fill all fields');
-      if (formData.password !== formData.confirmPassword) return toast.error('Passwords do not match');
-      if (formData.password.length < 6) return toast.error('Password too short (min 6)');
-      if (usernameAvailable === false) return toast.error('Username is taken');
+      if (!formData.email || !formData.username || !formData.password) return toast.error('Please fill in all fields.');
+      
+      // Username Checks
+      if (usernameError) return toast.error(usernameError);
+      if (usernameAvailable === false) return toast.error('Username is taken.');
+      if (usernameAvailable === null && formData.username.length > 0) return toast.error('Checking username...');
+
+      // Password Checks
+      const pwdError = validatePassword(formData.password);
+      if (pwdError) return toast.error(pwdError);
+      if (formData.password !== formData.confirmPassword) return toast.error('Passwords do not match.');
     }
     if (step === 2) {
-      if (!formData.fullName || !formData.birthDate || !formData.phone) return toast.error('Fill personal info');
-      if (formData.phone.length < 17) return toast.error('Invalid phone number');
+      if (!formData.fullName || !formData.birthDate || !formData.phone) return toast.error('Please fill in personal info.');
+      if (formData.phone.length < 17) return toast.error('Invalid phone number.');
     }
     if (step === 3) {
-      if (!formData.region || !formData.district) return toast.error('Select location');
+      if (!formData.region || !formData.district) return toast.error('Please select your location.');
     }
     setStep(prev => prev + 1);
   };
@@ -128,10 +163,12 @@ export default function SignupPage() {
   // 3. SUBMIT
   const handleSignup = async () => {
     setLoading(true);
+    let user = null;
+
     try {
       // A. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      user = userCredential.user;
       await updateProfile(user, { displayName: formData.fullName });
 
       // B. Prepare Database Batch
@@ -176,15 +213,30 @@ export default function SignupPage() {
       const usernameRef = doc(db, 'usernames', formData.username.toLowerCase());
       batch.set(usernameRef, { uid: user.uid });
 
-      await batch.commit();
+      await batch.commit(); 
       
       toast.success(`Welcome, ${role === 'teacher' ? 'Professor' : 'Student'}!`);
-      router.push(role === 'teacher' ? '/teacher/classes' : '/dashboard');
+      
+      if (role === 'teacher') {
+        router.push('/teacher/dashboard'); 
+      } else {
+        router.push('/dashboard');
+      }
 
     } catch (error: any) {
-      console.error(error);
+      console.error("Signup Error:", error);
+      
+      // Rollback orphaned user
+      if (user && auth.currentUser) {
+        try {
+          await deleteUser(auth.currentUser);
+        } catch (rollbackError) {
+          console.error("Rollback failed", rollbackError);
+        }
+      }
+
       if (error.code === 'auth/email-already-in-use') toast.error('Email already in use.');
-      else toast.error('Signup failed. Please try again.');
+      else toast.error('Connection failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -272,16 +324,26 @@ export default function SignupPage() {
                   <User className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
                   <input 
                     name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange}
+                    // 🟢 Conditional Styling for Username States
                     className={`w-full pl-12 pr-10 py-3.5 rounded-xl border-2 outline-none font-medium transition text-white bg-slate-800/50 placeholder:text-slate-600
-                      ${usernameAvailable === true ? 'border-green-500/50 focus:border-green-500' : 
-                        usernameAvailable === false ? 'border-red-500/50 focus:border-red-500' : 
+                      ${usernameError ? 'border-red-500/50 focus:border-red-500' :
+                        usernameAvailable === true ? 'border-green-500/50 focus:border-green-500' : 
+                        usernameAvailable === false ? 'border-amber-500/50 focus:border-amber-500' : 
                         'border-slate-700/50 focus:border-cyan-500'}`}
                   />
                   <div className="absolute right-4 top-3.5">
                     {isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> :
+                     usernameError ? <XCircle className="text-red-500" size={20} /> :
                      usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> :
-                     usernameAvailable === false ? <XCircle className="text-red-500" size={20} /> : null}
+                     usernameAvailable === false ? <XCircle className="text-amber-500" size={20} /> : null}
                   </div>
+                  {/* 🟢 Inline Error Message for Username */}
+                  {usernameError && (
+                    <p className="text-[10px] text-red-400 font-bold mt-1 ml-1">{usernameError}</p>
+                  )}
+                  {usernameAvailable === false && (
+                    <p className="text-[10px] text-amber-400 font-bold mt-1 ml-1">Username is already taken.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
