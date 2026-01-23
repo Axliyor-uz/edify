@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  Send,
   MapPin,
   Mail,
   Phone,
@@ -310,12 +311,13 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* --- 3. FOOTER (Exact Copy) --- */}
+      {/* --- 3. UPDATED FOOTER --- */}
       <footer className="bg-slate-900/80 backdrop-blur-xl border-t border-slate-700/50 pt-16 pb-8 relative z-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {/* Changed grid to 3 columns since Support is removed */}
+          <div className="grid md:grid-cols-3 gap-12 mb-12">
             
-            {/* Company Info */}
+            {/* 1. Company Info & Socials */}
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-10 w-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-xl flex items-center justify-center">
@@ -325,39 +327,42 @@ export default function LandingPage() {
                   Edify.
                 </span>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                Powered by Wasp-2 AI. Creating the next generation of assessment tools for New Uzbekistan University and beyond.
+              <p className="text-slate-400 text-sm leading-relaxed mb-6 max-w-sm">
+                Powered by Wasp-2 AI. Creating the next generation of assessment tools for Schools and beyond.
               </p>
+              
+              {/* Social Icons */}
               <div className="flex gap-4">
                 <motion.a 
-                  href="#" 
-                  className="text-slate-400 hover:text-cyan-400 transition-colors"
-                  whileHover={{ y: -2 }}
+                  href="https://github.com/umidjon0339" 
+                  target="_blank"
+                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                  whileHover={{ y: -3 }}
                 >
                   <Github className="w-5 h-5" />
                 </motion.a>
                 <motion.a 
-                  href="#" 
-                  className="text-slate-400 hover:text-cyan-400 transition-colors"
-                  whileHover={{ y: -2 }}
-                >
-                  <Twitter className="w-5 h-5" />
-                </motion.a>
-                <motion.a 
-                  href="#" 
-                  className="text-slate-400 hover:text-cyan-400 transition-colors"
-                  whileHover={{ y: -2 }}
+                  href="https://www.linkedin.com/company/wasp-2-ai" 
+                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-slate-700 transition-colors"
+                  whileHover={{ y: -3 }}
                 >
                   <Linkedin className="w-5 h-5" />
+                </motion.a>
+                <motion.a 
+                  href="https://t.me/u_m_i_d_j_o_n_006" 
+                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
+                  whileHover={{ y: -3 }}
+                >
+                  <Send className="w-5 h-5 -ml-0.5 mt-0.5" /> {/* Telegram Icon */}
                 </motion.a>
               </div>
             </div>
 
-            {/* Quick Links */}
+            {/* 2. Platform Links */}
             <div>
               <h3 className="text-lg font-bold mb-6 text-white">Platform</h3>
               <ul className="space-y-3">
-                {['For Teachers', 'For Students', 'Features', 'Pricing'].map((link) => (
+                {['For Teachers', 'For Students', 'Features', 'Pricing', 'Login'].map((link) => (
                   <motion.li key={link}>
                     <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors hover:underline">
                       {link}
@@ -367,46 +372,35 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            {/* Legal */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Support</h3>
-              <ul className="space-y-3">
-                {['Help Center', 'API Documentation', 'System Status', 'Contact Support'].map((item) => (
-                  <motion.li key={item}>
-                    <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors hover:underline">
-                      {item}
-                    </a>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Contact & Map */}
+            {/* 3. Contact & Map */}
             <div>
               <h3 className="text-lg font-bold mb-6 text-white">Contact</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-cyan-400" />
-                  <span className="text-slate-400 text-sm">54 Mustaqillik Ave, Tashkent</span>
+                  <MapPin className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <span className="text-slate-400 text-sm">Afrosiyob koʻchasi, 15/2, Tashkent</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-cyan-400" />
-                  <span className="text-slate-400 text-sm">info@edify.uz</span>
+                  <Mail className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <span className="text-slate-400 text-sm">info@wasp-2.com</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-cyan-400" />
-                  <span className="text-slate-400 text-sm">+998 90 123 45 67</span>
+                  <Phone className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <span className="text-slate-400 text-sm">+998 55 510 20 01</span>
                 </div>
               </div>
               
-              {/* Mini Map Placeholder */}
-              <div className="mt-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-                <div className="flex items-center justify-center h-24 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg">
-                  <div className="text-center">
-                    <MapPin className="w-6 h-6 text-cyan-400 mx-auto mb-1" />
-                    <span className="text-slate-500 text-xs">NewUU Campus</span>
-                  </div>
-                </div>
+              {/* Interactive Map Embed (Specific Coordinates) */}
+              <div className="rounded-xl overflow-hidden h-40 w-full border border-slate-700/50 shadow-lg grayscale hover:grayscale-0 transition-all duration-500 relative group">
+                <iframe 
+                  src="https://maps.google.com/maps?q=41.296837,69.272712&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                  width="100%" 
+                  height="100%" 
+                  style={{ border: 0 }} 
+                  allowFullScreen 
+                  loading="lazy"
+                  className="opacity-70 group-hover:opacity-100 transition-opacity"
+                ></iframe>
               </div>
             </div>
           </div>
