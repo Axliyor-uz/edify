@@ -7,7 +7,7 @@ import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebas
 import { useAuth } from '@/lib/AuthContext';
 import { 
   History, Calendar, ArrowRight, CheckCircle2, 
-  TrendingUp, Clock, FileText 
+  TrendingUp, FileText 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -51,7 +51,15 @@ const FloatingParticles = () => {
   );
 };
 
-const GlowingOrb = ({ color, size, position }) => (
+// 🟢 FIX 1: Add Interface for Props
+interface GlowingOrbProps {
+  color: string;
+  size: number;
+  position: { x: string; y: string };
+}
+
+// 🟢 FIX 2: Apply Interface
+const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   <motion.div
     className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
     style={{
@@ -65,8 +73,15 @@ const GlowingOrb = ({ color, size, position }) => (
   />
 );
 
+// 🟢 FIX 3: Add Interface for HistoryCard
+interface HistoryCardProps {
+  attempt: any; // Using 'any' to handle the complex Firestore object flexibly
+  index: number;
+}
+
 // --- HISTORY CARD COMPONENT ---
-const HistoryCard = ({ attempt, index }) => {
+// 🟢 FIX 4: Apply Interface
+const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
   const router = useRouter();
   const [testTitle, setTestTitle] = useState(attempt.testTitle || '');
 
@@ -165,7 +180,7 @@ const HistoryCard = ({ attempt, index }) => {
 // --- MAIN PAGE ---
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [attempts, setAttempts] = useState([]);
+  const [attempts, setAttempts] = useState<any[]>([]); // 🟢 FIX 5: Typed State
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

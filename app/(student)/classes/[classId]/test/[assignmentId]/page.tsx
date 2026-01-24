@@ -64,16 +64,20 @@ export default function TestRunnerPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   
-  // --- REFS (Moved to top to fix Hook Error) ---
+  // --- REFS ---
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const scrollNavRef = useRef<HTMLDivElement>(null); // 🟢 Fixed: Defined at top
+  const scrollNavRef = useRef<HTMLDivElement>(null);
 
   // Storage Key
   const STORAGE_KEY = `test_session_${user?.uid}_${assignmentId}`;
 
   // --- 1. INITIAL LOAD & RESTORE SESSION ---
   useEffect(() => {
+    // 🟢 FIX 1: Capture user existence
     if (!user) return;
+    
+    // 🟢 FIX 2: Capture UID immediately to satisfy TypeScript
+    const userId = user.uid;
 
     async function loadData() {
       try {
@@ -94,7 +98,8 @@ export default function TestRunnerPage() {
         // Check Attempts
         const limit = assignData.allowedAttempts ?? 1;
         if (limit !== 0) { 
-          const attemptsQ = query(collection(db, 'attempts'), where('assignmentId', '==', assignmentId), where('userId', '==', user.uid));
+          // 🟢 FIX 3: Use 'userId' variable instead of 'user.uid'
+          const attemptsQ = query(collection(db, 'attempts'), where('assignmentId', '==', assignmentId), where('userId', '==', userId));
           const attemptsSnap = await getDocs(attemptsQ);
           if (attemptsSnap.size >= limit) {
             toast.error("Max attempts reached.");
@@ -122,7 +127,7 @@ export default function TestRunnerPage() {
             toast.error("Session expired.");
             localStorage.removeItem(STORAGE_KEY);
           } else {
-            // ✅ RESUME SESSION
+            // RESUME SESSION
             setState({
               status: 'taking',
               assignment: assignData,
@@ -156,7 +161,7 @@ export default function TestRunnerPage() {
       }
     }
     loadData();
-  }, [classId, assignmentId, user, router]);
+  }, [classId, assignmentId, user, router, STORAGE_KEY]);
 
   // --- 2. AUTO-SAVE EFFECT ---
   useEffect(() => {
@@ -170,9 +175,9 @@ export default function TestRunnerPage() {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
     }
-  }, [state.answers, state.flagged, state.currentQuestionIndex, state.tabSwitchCount, state.status, state.endTime]);
+  }, [state.answers, state.flagged, state.currentQuestionIndex, state.tabSwitchCount, state.status, state.endTime, STORAGE_KEY]);
 
-  // --- 3. SCROLL NAVIGATOR EFFECT (Moved to top) ---
+  // --- 3. SCROLL NAVIGATOR EFFECT ---
   useEffect(() => {
     if (state.status === 'taking' && scrollNavRef.current) {
       const activeButton = scrollNavRef.current.children[state.currentQuestionIndex] as HTMLElement;
@@ -288,7 +293,10 @@ export default function TestRunnerPage() {
     setShowSubmitModal(false);
     if (!user) return;
     
-    localStorage.removeItem(STORAGE_KEY); // Clear session
+    // 🟢 FIX 4: Capture ID here too for safety
+    const userId = user.uid;
+
+    localStorage.removeItem(STORAGE_KEY); 
 
     let correctCount = 0;
     state.questions.forEach(q => {
@@ -296,10 +304,10 @@ export default function TestRunnerPage() {
     });
 
     try {
-      const attemptDocId = `${user.uid}_${assignmentId}`;
+      const attemptDocId = `${userId}_${assignmentId}`;
       const attemptRef = doc(db, 'attempts', attemptDocId);
       const attemptData = {
-        userId: user.uid,
+        userId: userId,
         userName: user.displayName,
         classId,
         assignmentId,
@@ -317,7 +325,7 @@ export default function TestRunnerPage() {
 
       const assignmentRef = doc(db, 'classes', classId, 'assignments', assignmentId);
       try {
-        await updateDoc(assignmentRef, { completedBy: arrayUnion(user.uid) });
+        await updateDoc(assignmentRef, { completedBy: arrayUnion(userId) });
       } catch (err) { console.warn(err); }
 
       if (state.assignment.teacherId) {
@@ -334,7 +342,7 @@ export default function TestRunnerPage() {
     }
   };
 
-  // --- RENDERERS (With Early Returns AFTER Hooks) ---
+  // --- RENDERERS ---
 
   if (state.status === 'loading') return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600 gap-3"><Loader2 className="animate-spin" size={32} /><span className="font-bold">Loading Test...</span></div>;
   if (state.status === 'error') return <div className="flex h-screen items-center justify-center flex-col gap-4"><AlertTriangle size={48} className="text-red-500" /><h1 className="text-xl font-bold">Error loading test</h1><button onClick={() => router.back()} className="text-indigo-600 hover:underline">Go Back</button></div>;
@@ -410,7 +418,7 @@ export default function TestRunnerPage() {
         <div className="hidden md:flex gap-2"><button onClick={toggleFullscreen} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg">{isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}</button></div>
       </header>
 
-      {/* 🟢 NAVIGATION BAR (TOP) */}
+      {/* NAVIGATION BAR (TOP) */}
       <div className="bg-white border-b border-slate-200 py-3 px-4 shadow-sm z-10 shrink-0">
          <div ref={scrollNavRef} className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 px-1">
             {state.questions.map((q, idx) => {

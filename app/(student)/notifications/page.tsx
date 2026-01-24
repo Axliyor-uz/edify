@@ -2,15 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, doc, writeBatch, limit, deleteDoc } from 'firebase/firestore';
+import { 
+  collection, query, where, orderBy, onSnapshot, 
+  doc, writeBatch, limit, updateDoc // 🟢 Added updateDoc
+} from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { 
   Bell, Check, FileText, UserPlus, Trophy, Eye, Clock, 
   Trash2, Sparkles, Inbox
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- TYPES ---
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'assignment' | 'submission' | 'request' | 'result' | 'general';
+  read: boolean;
+  link?: string;
+  createdAt: any;
+}
+
+interface GlowingOrbProps {
+  color: string;
+  size: number;
+  position: { x: string; y: string };
+}
 
 // --- VISUAL COMPONENTS ---
 const FloatingParticles = () => {
@@ -52,7 +71,7 @@ const FloatingParticles = () => {
   );
 };
 
-const GlowingOrb = ({ color, size, position }) => (
+const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   <motion.div
     className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
     style={{
@@ -70,7 +89,7 @@ export default function NotificationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 1. LISTEN TO ALL NOTIFICATIONS
@@ -85,7 +104,8 @@ export default function NotificationsPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // 🟢 FIX: Typed Mapping
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
       setNotifications(data);
       setLoading(false);
     });
@@ -94,12 +114,18 @@ export default function NotificationsPage() {
   }, [user]);
 
   // 2. ACTIONS
-  const handleRead = async (id, link) => {
-    if (link) router.push(link);
-    try {
-      await deleteDoc(doc(db, 'notifications', id));
-    } catch (e) { 
-      console.error("Error deleting notification:", e); 
+  const handleRead = async (notification: Notification) => {
+    // If it has a link, go there
+    if (notification.link) router.push(notification.link);
+    
+    // Only update DB if it's unread
+    if (!notification.read) {
+      try {
+        // 🟢 FIX: Update 'read' status instead of deleting
+        await updateDoc(doc(db, 'notifications', notification.id), { read: true });
+      } catch (e) { 
+        console.error("Error updating notification:", e); 
+      }
     }
   };
 
@@ -109,7 +135,9 @@ export default function NotificationsPage() {
 
     notifications.forEach(n => {
       if (!n.read) {
-        batch.delete(doc(db, 'notifications', n.id));
+        // 🟢 FIX: Batch Update instead of Batch Delete
+        const ref = doc(db, 'notifications', n.id);
+        batch.update(ref, { read: true });
         hasUpdates = true;
       }
     });
@@ -129,7 +157,7 @@ export default function NotificationsPage() {
   };
 
   // 3. ICONS (Dark Mode Styled)
-  const getIcon = (type) => {
+  const getIcon = (type: string) => {
     const baseClass = "p-3 rounded-xl border backdrop-blur-md shadow-lg";
     switch (type) {
       case 'assignment': 
@@ -145,7 +173,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const getTimeString = (timestamp) => {
+  const getTimeString = (timestamp: any) => {
     if (!timestamp) return 'Just now';
     const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -237,7 +265,7 @@ export default function NotificationsPage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  onClick={() => handleRead(n.id, n.link)}
+                  onClick={() => handleRead(n)}
                   className={`relative p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1 overflow-hidden
                     ${!n.read 
                       ? 'bg-slate-800/80 border-indigo-500/40 shadow-lg shadow-indigo-500/5' 

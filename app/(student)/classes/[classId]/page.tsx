@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
-// 👇 Import new component
 import AssignmentsTab from './_components/AssignmentsTab';
 
 // Floating Particles Background
@@ -92,15 +92,18 @@ export default function StudentClassPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [classData, setClassData] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [myAttempts, setMyAttempts] = useState([]);
+  const [classData, setClassData] = useState<any>(null);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [myAttempts, setMyAttempts] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('assignments');
 
   useEffect(() => {
     if (!user) return; 
+    
+    // 🟢 FIX: Capture userId here to satisfy TypeScript
+    const userId = user.uid;
 
     async function fetchData() {
       setLoading(true);
@@ -125,9 +128,10 @@ export default function StudentClassPage() {
         const assignSnap = await getDocs(assignQuery);
         const allAssignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        const myAssignments = allAssignments.filter((a) => 
+        // 🟢 FIX: Use captured 'userId' which is guaranteed to be a string
+        const myAssignments = allAssignments.filter((a: any) => 
           a.assignedTo === 'all' || 
-          (Array.isArray(a.assignedTo) && a.assignedTo.includes(user.uid))
+          (Array.isArray(a.assignedTo) && a.assignedTo.includes(userId))
         );
         setAssignments(myAssignments);
 
@@ -135,12 +139,12 @@ export default function StudentClassPage() {
         const attemptQuery = query(
           collection(db, 'attempts'), 
           where('classId', '==', classId),
-          where('userId', '==', user.uid)
+          where('userId', '==', userId)
         );
         const attemptSnap = await getDocs(attemptQuery);
         setMyAttempts(attemptSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
         if (e.code === 'permission-denied') {
           toast.error("Access Denied");
@@ -355,4 +359,3 @@ export default function StudentClassPage() {
     </div>
   );
 }
-import { motion } from 'framer-motion';

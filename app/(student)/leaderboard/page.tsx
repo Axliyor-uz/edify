@@ -11,7 +11,27 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// --- VISUAL COMPONENTS (Reused from MyClasses) ---
+// --- TYPE DEFINITIONS ---
+
+// 1. Interface for the User object in the Leaderboard
+interface LeaderboardUser {
+  uid: string;
+  displayName: string;
+  totalXP: number;
+  currentStreak: number;
+  dailyHistory?: Record<string, number>;
+  score: number; // We calculate this dynamically based on the filter
+}
+
+// 2. Interface for GlowingOrb Props
+interface GlowingOrbProps {
+  color: string;
+  size: number;
+  position: { x: string; y: string };
+}
+
+// --- VISUAL COMPONENTS ---
+
 const FloatingParticles = () => {
   const particles = Array.from({ length: 20 }, (_, i) => ({
     id: i,
@@ -51,7 +71,8 @@ const FloatingParticles = () => {
   );
 };
 
-const GlowingOrb = ({ color, size, position }) => (
+// 🟢 FIX: Applied Interface
+const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   <motion.div
     className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
     style={{
@@ -67,8 +88,9 @@ const GlowingOrb = ({ color, size, position }) => (
 
 // --- LOGIC HELPERS ---
 const getTodayKey = () => new Date().toISOString().split('T')[0];
+
 const getWeekKeys = () => {
-  const keys = [];
+  const keys: string[] = [];
   const today = new Date();
   const day = today.getDay(); 
   const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
@@ -80,8 +102,9 @@ const getWeekKeys = () => {
   }
   return keys;
 };
+
 const getMonthKeys = () => {
-  const keys = [];
+  const keys: string[] = [];
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth(); 
@@ -96,7 +119,9 @@ const getMonthKeys = () => {
 export default function LeaderboardPage() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState([]);
+  
+  // 🟢 FIX: Applied Typed State
+  const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('week');
 
@@ -106,16 +131,27 @@ export default function LeaderboardPage() {
       try {
         const q = query(collection(db, 'users'), orderBy('totalXP', 'desc'), limit(100));
         const snapshot = await getDocs(q);
-        const rawUsers = snapshot.docs.map(doc => doc.data());
+        
+        // Map raw Firestore data to a temporary object structure
+        const rawUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as any));
 
-        const processed = rawUsers.map(u => {
+        const processed: LeaderboardUser[] = rawUsers.map((u: any) => {
           let score = 0;
           const history = u.dailyHistory || {};
-          if (filter === 'all') score = u.totalXP;
+          
+          if (filter === 'all') score = u.totalXP || 0;
           else if (filter === 'today') score = history[getTodayKey()] || 0;
           else if (filter === 'week') getWeekKeys().forEach(k => score += (history[k] || 0));
           else if (filter === 'month') getMonthKeys().forEach(k => score += (history[k] || 0));
-          return { ...u, score };
+          
+          return {
+            uid: u.uid,
+            displayName: u.displayName || 'Anonymous',
+            totalXP: u.totalXP || 0,
+            currentStreak: u.currentStreak || 0,
+            dailyHistory: u.dailyHistory,
+            score: score
+          };
         });
 
         const sorted = processed.filter(u => u.score > 0).sort((a, b) => b.score - a.score);
@@ -129,7 +165,8 @@ export default function LeaderboardPage() {
     fetchData();
   }, [filter]);
 
-  const handleUserClick = (targetUid) => {
+  // 🟢 FIX: Added type for targetUid
+  const handleUserClick = (targetUid: string) => {
     if (targetUid === currentUser?.uid) {
         router.push('/profile'); 
     } else {
@@ -137,7 +174,8 @@ export default function LeaderboardPage() {
     }
   };
 
-  const getRankIcon = (rank) => {
+  // 🟢 FIX: Added type for rank
+  const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={28} />;
     if (rank === 2) return <Medal className="text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.3)]" size={26} />;
     if (rank === 3) return <Medal className="text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]" size={26} />;

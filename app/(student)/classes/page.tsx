@@ -10,7 +10,7 @@ import {
   GraduationCap, Users, ChevronRight, Plus, BookOpen, 
   ArrowRight 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Floating Particles Background
 const FloatingParticles = () => {
@@ -54,8 +54,15 @@ const FloatingParticles = () => {
   );
 };
 
-// Glowing Orb Component
-const GlowingOrb = ({ color, size, position }) => {
+// 🟢 FIX: Define the interface for GlowingOrb props
+interface GlowingOrbProps {
+  color: string;
+  size: number;
+  position: { x: string; y: string };
+}
+
+// 🟢 FIX: Apply the interface to the component
+const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => {
   return (
     <motion.div
       className={`absolute rounded-full ${color} blur-3xl opacity-20`}
@@ -80,7 +87,8 @@ const GlowingOrb = ({ color, size, position }) => {
 
 export default function MyClassesPage() {
   const { user } = useAuth();
-  const [classes, setClasses] = useState([]);
+  // 🟢 FIX: Define the type for the 'classes' state (array of any object for simplicity, or define a Class interface)
+  const [classes, setClasses] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
