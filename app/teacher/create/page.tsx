@@ -57,6 +57,8 @@ export default function CreateTestPage() {
 
   // --- CACHE HELPERS (7 Days TTL) ---
   const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; 
+  
+  // 🟢 LOGIC UPDATE: Cache key remains the same, as it depends on UI selection, not DB structure
   const getCacheKey = (subIdx: number, diff: string) => `quiz_cache_${activeCatIndex}_${activeChapIndex}_${subIdx}_${diff}`;
 
   const saveToCache = (key: string, questions: UIQuestion[]) => { 
@@ -83,38 +85,71 @@ export default function CreateTestPage() {
     } catch(e) { return null; }
   };
 
-  // --- FETCH LOGIC ---
+  // --- FETCH LOGIC (UPDATED FOR FLAT STRUCTURE) ---
   const handleFetch = async (subtopic: typeof selectedSubtopic, difficulty: typeof difficultyFilter, cursor: DocumentSnapshot | string | null) => {
-    if (!activeCatIndex || !activeChapIndex || !subtopic) return;
+    // Safety check
+    if (activeCatIndex === null || activeChapIndex === null || !subtopic) return;
+    
     const cacheKey = getCacheKey(subtopic.index, difficulty);
     
+    // 1. Check Cache (Only on initial load, not load more)
     if (!cursor) {
       const cached = loadFromCache(cacheKey);
       if (cached && cached.length > 0) {
-        setAvailableQuestions(cached); setLastDoc(cached[cached.length - 1].id); setIsCachedData(true); setHasMore(true); return;
+        setAvailableQuestions(cached); 
+        // 🟢 NOTE: We store the last ID string for cache recovery
+        setLastDoc(cached[cached.length - 1].id); 
+        setIsCachedData(true); 
+        setHasMore(true); 
+        return;
       }
     }
     
     setLoadingQuestions(true);
     try {
-      const pathIds = { subjectId: "01", topicId: activeCatIndex, chapterId: activeChapIndex, subtopicId: subtopic.index };
+      // 🟢 LOGIC UPDATE: Pass raw numbers. The Service handles padding/strings.
+      const pathIds = { 
+        subjectId: "01", 
+        topicId: activeCatIndex, 
+        chapterId: activeChapIndex, 
+        subtopicId: subtopic.index 
+      };
+
       const { questions, lastDoc: newCursor } = await fetchQuestions(pathIds, difficulty, cursor);
-      const formatted: UIQuestion[] = questions.map(q => ({ ...q, text: typeof q.question === 'object' ? (q.question as any).uz || "Q" : q.question || "Q", uiDifficulty: difficulty }));
+      
+      const formatted: UIQuestion[] = questions.map(q => ({ 
+        ...q, 
+        // Handle potentially different data shapes from legacy uploads
+        text: typeof q.question === 'object' ? (q.question as any).uz || "Question Text" : q.question || "Question Text", 
+        uiDifficulty: difficulty 
+      }));
       
       setAvailableQuestions(prev => { 
         const upd = cursor ? [...prev, ...formatted] : formatted; 
-        saveToCache(cacheKey, upd); return upd; 
+        saveToCache(cacheKey, upd); 
+        return upd; 
       });
-      setLastDoc(newCursor); setIsCachedData(false); if (questions.length < 5) setHasMore(false);
-    } catch (err) { console.error(err); toast.error("Failed to load questions"); } finally { setLoadingQuestions(false); }
+      
+      setLastDoc(newCursor); 
+      setIsCachedData(false); 
+      
+      // If we got fewer than requested (5), we reached the end
+      if (questions.length < 5) setHasMore(false);
+
+    } catch (err) { 
+      console.error(err); 
+      toast.error("Failed to load questions"); 
+    } finally { 
+      setLoadingQuestions(false); 
+    }
   };
 
-  // --- HANDLERS ---
+  // --- HANDLERS (Unchanged) ---
   const handleSelectionChange = (newSub: typeof selectedSubtopic, newDiff: typeof difficultyFilter) => {
     if (!newSub) return; 
     setAvailableQuestions([]); setLastDoc(null); setHasMore(true); setIsCachedData(false); 
     handleFetch(newSub, newDiff, null);
-    if (window.innerWidth < 1024) setIsSyllabusOpen(false); // Close drawer on mobile
+    if (window.innerWidth < 1024) setIsSyllabusOpen(false); 
   };
   
   const handleLoadMore = () => { if (!lastDoc) return; handleFetch(selectedSubtopic, difficultyFilter, lastDoc); };
@@ -150,7 +185,6 @@ export default function CreateTestPage() {
   if (!categories.length) return <div className="p-10 text-center">Data Error</div>;
 
   return (
-    // 🟢 MOBILE FIX 1: Use 100dvh (Dynamic Height) to fix jumpy mobile address bars
     <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-hidden">
       
       <TestConfigurationModal 
@@ -199,8 +233,7 @@ export default function CreateTestPage() {
       {/* --- WORKSPACE --- */}
       <div className="flex-1 flex overflow-hidden relative">
         
-        {/* --- A. SYLLABUS (Slide-Over on Mobile) --- */}
-        {/* 🟢 MOBILE FIX 2: High Z-Index for drawer to sit above everything */}
+        {/* --- A. SYLLABUS --- */}
         <aside className={`
           fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 shadow-2xl lg:shadow-none
           ${isSyllabusOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -247,12 +280,10 @@ export default function CreateTestPage() {
           </div>
         </aside>
 
-        {/* Syllabus Backdrop */}
         {isSyllabusOpen && <div className="fixed inset-0 bg-black/30 z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSyllabusOpen(false)} />}
 
         {/* --- B. MAIN FEED --- */}
         <main className="flex-1 overflow-hidden flex flex-col relative bg-slate-50/50 w-full">
-          {/* Toolbar */}
           <div className="px-4 py-3 md:px-6 md:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 bg-slate-50/80 backdrop-blur-sm z-10 sticky top-0">
             <div className="flex items-center gap-2 overflow-hidden">
               <h3 className="font-bold text-slate-800 flex items-center gap-2 truncate">
@@ -274,7 +305,6 @@ export default function CreateTestPage() {
             </div>
           </div>
 
-          {/* Feed Content */}
           <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-28 lg:pb-6 custom-scrollbar">
             {!selectedSubtopic ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
@@ -284,11 +314,12 @@ export default function CreateTestPage() {
             ) : availableQuestions.length === 0 && !loadingQuestions ? (
               <div className="text-center py-20 text-slate-400 text-sm">No questions found.</div>
             ) : (
-              <div className="space-y-4 max-w-3xl mx-auto">
-                {availableQuestions.map(q => (
+                <div className="space-y-4 max-w-3xl mx-auto">
+                {availableQuestions.map((q, idx) => ( // 🟢 FIX: Added parentheses around (q, idx)
                   <QuestionCard 
                     key={q.id} 
                     question={q} 
+                    index={idx + 1}
                     isAdded={addedQuestions.some(add => add.id === q.id)} 
                     onAdd={() => handleAddQuestion(q)} 
                   />
@@ -310,8 +341,7 @@ export default function CreateTestPage() {
           </div>
         </main>
 
-        {/* --- C. CART DRAWER (Bottom Sheet on Mobile) --- */}
-        {/* 🟢 MOBILE FIX 3: Bottom Sheet logic with safe area padding */}
+        {/* --- C. CART DRAWER --- */}
         <aside className={`
           fixed lg:static inset-x-0 bottom-0 lg:inset-y-0 lg:right-0 z-50 
           w-full lg:w-80 bg-slate-900 text-white 
@@ -320,7 +350,6 @@ export default function CreateTestPage() {
           lg:translate-x-0 flex flex-col border-t lg:border-l border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] lg:shadow-none 
           h-[85vh] lg:h-full rounded-t-3xl lg:rounded-none
         `}>
-          {/* Mobile Handle */}
           <div className="lg:hidden flex justify-center pt-3 pb-1 w-full" onClick={() => setIsCartOpen(false)}>
              <div className="w-12 h-1.5 bg-slate-700 rounded-full cursor-pointer"></div>
           </div>
@@ -357,11 +386,9 @@ export default function CreateTestPage() {
           </div>
         </aside>
 
-        {/* Cart Backdrop */}
         {isCartOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />}
 
-        {/* --- D. FLOATING ACTION BUTTON (Mobile Only) --- */}
-        {/* 🟢 MOBILE FIX 4: Z-30 to stay above content but below drawers */}
+        {/* --- D. FLOATING ACTION BUTTON --- */}
         {!isCartOpen && (
           <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30 w-auto">
             <button 

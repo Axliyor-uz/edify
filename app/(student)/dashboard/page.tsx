@@ -222,7 +222,7 @@ export default function StudentDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="space-y-2">
+          <div className="space-y-2 pt-[40px] md:pt-0">
             <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight">
               Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
                 {profile?.displayName}

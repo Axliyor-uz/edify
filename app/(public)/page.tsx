@@ -334,7 +334,7 @@ export default function LandingPage() {
               {/* Social Icons */}
               <div className="flex gap-4">
                 <motion.a 
-                  href="https://github.com/umidjon0339" 
+                  href="https://github.com/Wasp-2-AI" 
                   target="_blank"
                   className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
                   whileHover={{ y: -3 }}
@@ -382,11 +382,11 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-cyan-400 shrink-0" />
-                  <span className="text-slate-400 text-sm">info@wasp-2.com</span>
+                  <span className="text-slate-400 text-sm">u.jumaqulov@newuu.uz</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-cyan-400 shrink-0" />
-                  <span className="text-slate-400 text-sm">+998 55 510 20 01</span>
+                  <span className="text-slate-400 text-sm">+998 33 860 20 06</span>
                 </div>
               </div>
               

@@ -17,11 +17,11 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
 
   if (assignments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-        <div className="p-4 bg-white rounded-full shadow-sm mb-4">
-          <FileText className="text-slate-300" size={32} />
+      <div className="flex flex-col items-center justify-center py-20 bg-slate-800/50 rounded-2xl border border-dashed border-slate-700">
+        <div className="p-4 bg-slate-800 rounded-full shadow-lg mb-4">
+          <FileText className="text-slate-400" size={32} />
         </div>
-        <h3 className="text-slate-600 font-bold text-lg">No active assignments</h3>
+        <h3 className="text-slate-300 font-bold text-lg">No active assignments</h3>
         <p className="text-slate-400 text-sm">You're all caught up for now.</p>
       </div>
     );
@@ -55,41 +55,41 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
         return (
           <div 
             key={assign.id} 
-            className="group bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5 hover:border-indigo-300 hover:shadow-md transition-all duration-200"
+            className="group bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-700 p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-500/50 hover:shadow-xl transition-all duration-300"
           >
             {/* LEFT: INFO */}
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-2 min-w-0">
               <div className="flex items-center gap-3">
-                <h3 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">
+                <h3 className="font-bold text-white text-base md:text-lg group-hover:text-blue-400 transition-colors truncate">
                   {assign.testTitle}
                 </h3>
                 
                 {(assign.duration > 0 || !assign.showResults) && (
                   <div className="group/tooltip relative">
-                    <ShieldCheck size={14} className="text-emerald-500/60" />
+                    <ShieldCheck size={14} className="text-emerald-400/60" />
                   </div>
                 )}
               </div>
 
               {/* Metadata Row */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-500">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-medium text-slate-400">
                 
                 {/* 1. Question Count */}
                 <span className="flex items-center gap-1.5">
-                  <FileText size={14} className="text-slate-400" />
-                  {assign.questionCount} Questions
+                  <FileText size={14} className="text-slate-500" />
+                  <span className="font-medium text-white">{assign.questionCount}</span> Questions
                 </span>
 
                 {/* 2. Duration (Time Limit) - NEW 🟢 */}
                 <span className="flex items-center gap-1.5">
-                  <Clock size={14} className="text-slate-400" />
+                  <Clock size={14} className="text-slate-500" />
                   {assign.duration ? `${assign.duration} mins` : 'No Time Limit'}
                 </span>
 
                 {/* 3. Due Date */}
                 {dueDate && (
-                  <span className={`flex items-center gap-1.5 ${isExpired ? 'text-red-500 font-bold' : ''}`}>
-                    <Calendar size={14} className={isExpired ? 'text-red-500' : 'text-slate-400'} />
+                  <span className={`flex items-center gap-1.5 ${isExpired ? 'text-red-400 font-bold' : ''}`}>
+                    <Calendar size={14} className={isExpired ? 'text-red-400' : 'text-slate-500'} />
                     {isExpired ? 'Closed ' : 'Due '} 
                     {formatDate(dueDate)} at {formatTime(dueDate)}
                   </span>
@@ -97,30 +97,30 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
 
                 {/* 4. Attempts Badge */}
                 {maxAttempts !== 1 && (
-                  <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                  <span className="flex items-center gap-1.5 bg-slate-700/50 px-2 py-0.5 rounded text-slate-300">
                     <RotateCcw size={12} />
-                    {attemptCount} / {maxAttempts === 0 ? '∞' : maxAttempts} Attempts
+                    <span className="font-medium text-white">{attemptCount}</span> / {maxAttempts === 0 ? '∞' : maxAttempts} Attempts
                   </span>
                 )}
 
                 {/* 5. Score Badge (If taken) - NEW 🟢 */}
                 {scorePercent !== null && (
                   <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded font-bold ${
-                    scorePercent >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    scorePercent >= 60 ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                   }`}>
                     <Trophy size={12} />
-                    {scorePercent}%
+                    <span className="font-medium">{scorePercent}%</span>
                   </span>
                 )}
               </div>
             </div>
 
             {/* RIGHT: ACTION BUTTON */}
-            <div className="sm:min-w-[160px] flex justify-end">
+            <div className="md:min-w-[160px] flex justify-end">
               
               {/* CASE A: LOCKED */}
               {isLocked ? (
-                <button disabled className="w-full sm:w-auto px-5 py-2.5 bg-slate-50 text-slate-400 font-bold rounded-lg border border-slate-100 flex items-center justify-center gap-2 text-sm cursor-not-allowed">
+                <button disabled className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-slate-700/50 text-slate-400 font-bold rounded-lg border border-slate-600 flex items-center justify-center gap-2 text-sm cursor-not-allowed">
                   <Lock size={16} /> 
                   <span>Locked</span>
                 </button>
@@ -129,14 +129,14 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
               : (isCompleted || (isExpired && attemptCount > 0)) ? (
                 <button 
                   onClick={() => router.push(`/classes/${classId}/test/${assign.id}/results`)}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                  className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-slate-800 border border-slate-600 text-slate-300 font-bold rounded-lg hover:border-blue-500 hover:text-blue-400 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-lg"
                 >
                   View Results <ArrowRight size={16} />
                 </button>
               )
               /* CASE C: EXPIRED & NEVER TRIED -> Dead */
               : isExpired ? (
-                <div className="w-full sm:w-auto px-5 py-2.5 bg-red-50 text-red-500 font-bold rounded-lg border border-red-100 flex items-center justify-center gap-2 text-sm">
+                <div className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-red-500/20 text-red-400 font-bold rounded-lg border border-red-500/30 flex items-center justify-center gap-2 text-sm">
                   <AlertCircle size={16} /> Missed
                 </div>
               )
@@ -144,10 +144,10 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
               : (
                 <button 
                   onClick={() => router.push(`/classes/${classId}/test/${assign.id}`)}
-                  className={`w-full sm:w-auto px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 text-sm hover:-translate-y-0.5 active:translate-y-0 ${
+                  className={`w-full md:w-auto px-4 md:px-6 py-2.5 font-bold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 text-sm hover:-translate-y-0.5 active:translate-y-0 ${
                     attemptCount > 0 
-                    ? 'bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100' // Retake Style
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200'      // Start Style
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30' // Retake Style
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 hover:shadow-xl'      // Start Style
                   }`}
                 >
                   {attemptCount > 0 ? <RotateCcw size={16}/> : <CheckCircle size={16}/>}

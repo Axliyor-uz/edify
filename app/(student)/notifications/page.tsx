@@ -2,24 +2,78 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-// 1. Import deleteDoc
 import { collection, query, where, orderBy, onSnapshot, doc, writeBatch, limit, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { 
   Bell, Check, FileText, UserPlus, Trophy, Eye, Clock, 
-  Trash2, ChevronLeft, Filter 
+  Trash2, Sparkles, Inbox
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- VISUAL COMPONENTS ---
+const FloatingParticles = () => {
+  const particles = Array.from({ length: 20 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 3 + 2,
+    duration: Math.random() * 20 + 10,
+    delay: Math.random() * 5,
+    opacity: Math.random() * 0.5 + 0.1,
+  }));
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full bg-indigo-400"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            opacity: particle.opacity,
+          }}
+          animate={{
+            y: [0, -80, 0],
+            opacity: [particle.opacity, 0, particle.opacity],
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const GlowingOrb = ({ color, size, position }) => (
+  <motion.div
+    className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
+    style={{
+      width: `${size}px`,
+      height: `${size}px`,
+      left: position.x,
+      top: position.y,
+    }}
+    animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
+    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+  />
+);
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. LISTEN TO ALL NOTIFICATIONS (Limit 50)
+  // 1. LISTEN TO ALL NOTIFICATIONS
   useEffect(() => {
     if (!user) return;
     
@@ -40,27 +94,20 @@ export default function NotificationsPage() {
   }, [user]);
 
   // 2. ACTIONS
-
-  // 🟢 MODIFIED: Delete immediately when clicked
-  const handleRead = async (id: string, link?: string) => {
-    // Navigate immediately (Optimistic UI) 
+  const handleRead = async (id, link) => {
     if (link) router.push(link);
-
     try {
-      // Instead of updating 'read: true', we DELETE it
       await deleteDoc(doc(db, 'notifications', id));
     } catch (e) { 
       console.error("Error deleting notification:", e); 
     }
   };
 
-  // 🟢 MODIFIED: Delete all UNREAD items when "Mark all read" is clicked
   const markAllRead = async () => {
     const batch = writeBatch(db);
     let hasUpdates = false;
 
     notifications.forEach(n => {
-      // If it's new (unread), we assume "Mark Read" means "I've seen it, remove it"
       if (!n.read) {
         batch.delete(doc(db, 'notifications', n.id));
         hasUpdates = true;
@@ -81,104 +128,167 @@ export default function NotificationsPage() {
     await batch.commit();
   };
 
-  // 3. ICONS
-  const getIcon = (type: string) => {
+  // 3. ICONS (Dark Mode Styled)
+  const getIcon = (type) => {
+    const baseClass = "p-3 rounded-xl border backdrop-blur-md shadow-lg";
     switch (type) {
-      case 'assignment': return <div className="bg-blue-100 text-blue-600 p-3 rounded-full"><FileText size={20} /></div>;
-      case 'submission': return <div className="bg-green-100 text-green-600 p-3 rounded-full"><Trophy size={20} /></div>;
-      case 'request': return <div className="bg-purple-100 text-purple-600 p-3 rounded-full"><UserPlus size={20} /></div>;
-      case 'result': return <div className="bg-orange-100 text-orange-600 p-3 rounded-full"><Eye size={20} /></div>;
-      default: return <div className="bg-slate-100 text-slate-600 p-3 rounded-full"><Bell size={20} /></div>;
+      case 'assignment': 
+        return <div className={`${baseClass} bg-blue-500/20 text-blue-400 border-blue-500/30`}><FileText size={20} /></div>;
+      case 'submission': 
+        return <div className={`${baseClass} bg-emerald-500/20 text-emerald-400 border-emerald-500/30`}><Trophy size={20} /></div>;
+      case 'request': 
+        return <div className={`${baseClass} bg-purple-500/20 text-purple-400 border-purple-500/30`}><UserPlus size={20} /></div>;
+      case 'result': 
+        return <div className={`${baseClass} bg-orange-500/20 text-orange-400 border-orange-500/30`}><Eye size={20} /></div>;
+      default: 
+        return <div className={`${baseClass} bg-slate-700/50 text-slate-300 border-slate-600/50`}><Bell size={20} /></div>;
     }
   };
 
-  // 4. TIME FORMATTER
-  const getTimeString = (timestamp: any) => {
+  const getTimeString = (timestamp) => {
     if (!timestamp) return 'Just now';
     const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) return <div className="p-10 text-center text-slate-400">Loading inbox...</div>;
-
-  return (
-    <div className="max-w-3xl mx-auto pb-20">
-      
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900">Inbox</h1>
-          <p className="text-slate-500 font-medium">Your activity & updates</p>
+  // --- SKELETON LOADING ---
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
+      <FloatingParticles />
+      <div className="max-w-3xl mx-auto p-6 pt-12 space-y-8 relative z-10">
+        <div className="flex justify-between items-end animate-pulse">
+           <div className="h-10 w-40 bg-slate-700/50 rounded-lg"></div>
+           <div className="h-10 w-24 bg-slate-700/50 rounded-lg"></div>
         </div>
-        
-        <div className="flex gap-2">
-           <button 
-             onClick={markAllRead} 
-             disabled={!notifications.some(n => !n.read)}
-             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors"
-             title="Dismiss all new notifications"
-           >
-             <Check size={16} /> Dismiss New
-           </button>
-           <button 
-             onClick={clearAll} 
-             disabled={notifications.length === 0}
-             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-             title="Clear History"
-           >
-             <Trash2 size={20} />
-           </button>
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-slate-800/80 rounded-2xl border border-slate-700/50 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-700/10 to-transparent animate-[shimmer_1.5s_infinite]" />
+            </div>
+          ))}
         </div>
       </div>
+      <style jsx>{` @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } } `}</style>
+    </div>
+  );
 
-      {/* LIST */}
-      <div className="space-y-3 animate-in fade-in slide-in-from-bottom-8 duration-500">
-        {notifications.length === 0 ? (
-           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-              <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Bell size={40} />
-              </div>
-              <h3 className="text-slate-900 font-bold text-lg">All caught up!</h3>
-              <p className="text-slate-500">You have no new notifications.</p>
-           </div>
-        ) : (
-          notifications.map((n) => (
-            <div 
-              key={n.id} 
-              onClick={() => handleRead(n.id, n.link)}
-              className={`relative bg-white p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg hover:border-indigo-200 hover:-translate-y-0.5 ${!n.read ? 'border-indigo-200 shadow-sm' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
-            >
-              {/* "New" Badge */}
-              {!n.read && (
-                <span className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm shadow-indigo-200">
-                  NEW
-                </span>
-              )}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
+      <FloatingParticles />
+      <GlowingOrb color="bg-indigo-600" size={300} position={{ x: '10%', y: '10%' }} />
+      <GlowingOrb color="bg-pink-600" size={400} position={{ x: '80%', y: '60%' }} />
 
-              <div className="flex items-start gap-5">
-                {/* Icon */}
-                <div className="shrink-0">{getIcon(n.type)}</div>
+      <div className="max-w-3xl mx-auto p-4 md:p-8 pb-20 relative z-10">
+        
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div>
+            <h1 className="pt-12 md:pt-0 text-3xl font-black text-white flex items-center gap-3 tracking-tight">
+               <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white shadow-lg shadow-indigo-500/20">
+                 <Inbox size={28} />
+               </div>
+               Inbox
+            </h1>
+            <p className="text-slate-400 mt-2 font-medium text-lg ml-1">
+              Your activity & updates
+            </p>
+          </div>
+          
+          <div className="flex gap-3">
+             <button 
+               onClick={markAllRead} 
+               disabled={!notifications.some(n => !n.read)}
+               className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold text-sm rounded-xl hover:bg-slate-700 hover:text-white hover:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+               title="Dismiss all new notifications"
+             >
+               <Check size={16} /> Dismiss New
+             </button>
+             <button 
+               onClick={clearAll} 
+               disabled={notifications.length === 0}
+               className="p-2.5 text-slate-400 border border-slate-700 bg-slate-800 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+               title="Clear History"
+             >
+               <Trash2 size={20} />
+             </button>
+          </div>
+        </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                   <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`text-base ${!n.read ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
-                        {n.title}
-                      </h3>
-                   </div>
-                   <p className="text-slate-600 text-sm leading-relaxed mb-3">{n.message}</p>
-                   
-                   <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} /> {getTimeString(n.createdAt)}
-                      </span>
-                      {n.link && <span className="text-indigo-500 group-hover:underline">View Details</span>}
-                   </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+        {/* LIST */}
+        <div className="space-y-3">
+          <AnimatePresence mode='popLayout'>
+            {notifications.length === 0 ? (
+               <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="text-center py-20 bg-slate-800/50 backdrop-blur-md rounded-3xl border border-dashed border-slate-700"
+               >
+                  <div className="w-20 h-20 bg-slate-700/50 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-600/50 shadow-inner">
+                    <Sparkles size={32} />
+                  </div>
+                  <h3 className="text-white font-bold text-xl mb-1">All caught up!</h3>
+                  <p className="text-slate-400">You have no new notifications.</p>
+               </motion.div>
+            ) : (
+              notifications.map((n) => (
+                <motion.div 
+                  key={n.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                  onClick={() => handleRead(n.id, n.link)}
+                  className={`relative p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1 overflow-hidden
+                    ${!n.read 
+                      ? 'bg-slate-800/80 border-indigo-500/40 shadow-lg shadow-indigo-500/5' 
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-600'
+                    }
+                  `}
+                >
+                  {/* Hover Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                  {/* "New" Badge */}
+                  {!n.read && (
+                    <span className="absolute top-4 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg shadow-indigo-500/30 tracking-wider">
+                      NEW
+                    </span>
+                  )}
+
+                  <div className="flex items-start gap-5 relative z-10">
+                    {/* Icon */}
+                    <div className="shrink-0 transition-transform group-hover:scale-110 duration-300">
+                      {getIcon(n.type)}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pt-0.5">
+                       <div className="flex items-center gap-2 mb-1.5 pr-12">
+                          <h3 className={`text-base md:text-lg leading-tight ${!n.read ? 'font-black text-white' : 'font-bold text-slate-300'}`}>
+                            {n.title}
+                          </h3>
+                       </div>
+                       <p className={`text-sm leading-relaxed mb-3 ${!n.read ? 'text-slate-300' : 'text-slate-500'}`}>
+                         {n.message}
+                       </p>
+                       
+                       <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
+                          <span className="flex items-center gap-1.5 bg-slate-900/30 px-2 py-1 rounded-md">
+                            <Clock size={12} /> {getTimeString(n.createdAt)}
+                          </span>
+                          {n.link && (
+                            <span className="text-indigo-400 flex items-center gap-1 group-hover:text-indigo-300 transition-colors">
+                              View Details <Eye size={12}/>
+                            </span>
+                          )}
+                       </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

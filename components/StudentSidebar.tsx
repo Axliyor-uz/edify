@@ -72,14 +72,18 @@ export default function StudentSidebar() {
 
       {/* 2. MENU ITEMS */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-        <button 
+        
+        
+        {/* <button 
           onClick={() => { setIsMobileOpen(false); setSearchOpen(true); }}
           className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-xl text-sm font-semibold bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all group"
         >
           <Search size={18} className="text-slate-500 group-hover:text-white" />
           <span>Search Users</span>
           <kbd className="ml-auto text-[10px] font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700 text-slate-500 group-hover:text-slate-400">⌘K</kbd>
-        </button>
+        </button> */}
+
+
 
         {menuItems.map((item) => {
           const Icon = item.icon;
