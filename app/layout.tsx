@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'; // 👈 Global Notifications
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MathMaster - Gamified Learning',
+  title: 'EdifyStudent | Teacher',
   description: 'Master Algebra, Geometry, and more with gamified lessons.',
 };
 
