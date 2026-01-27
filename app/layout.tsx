@@ -22,7 +22,7 @@ export default function RootLayout({
         {/* Wrap everything in AuthProvider so we can access 'user' anywhere */}
         <AuthProvider>
           {children}
-          <Toaster position="top-center" />
+          <Toaster position="top-center" toastOptions={{ duration: 3000 }}/>
         </AuthProvider>
       </body>
     </html>

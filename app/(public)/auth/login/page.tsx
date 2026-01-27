@@ -24,24 +24,33 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Authenticate with Firebase Auth
+      // 1. Authenticate
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Fetch User Role from Firestore
+      // 2. Fetch Profile
       const profile = await getUserProfile(user.uid);
 
-      toast.success(`Welcome back, ${profile?.displayName || 'User'}!`);
+      // FIX 1: Dismiss previous toasts to avoid clutter & force a duration
+      toast.dismiss(); 
+      toast.success(`Welcome back, ${profile?.displayName || 'User'}!`, {
+        duration: 4000, // Force it to close after 4 seconds
+      });
 
-      // 3. Smart Redirect based on Role
+      // 3. Redirect
       if (profile?.role === 'teacher') {
         router.push('/teacher/dashboard');
       } else {
         router.push('/dashboard');
       }
 
+      // NOTE: We do NOT set loading(false) here. 
+      // Let the button stay "loading" until the page changes.
+
     } catch (error: any) {
       console.error(error);
+      
+      // Error Handling
       if (error.code === 'auth/invalid-credential') {
         toast.error('Invalid email or password.');
       } else if (error.code === 'auth/user-not-found') {
@@ -49,9 +58,11 @@ export default function LoginPage() {
       } else {
         toast.error('Login failed. Please try again.');
       }
-    } finally {
+      
+      // FIX 2: Only stop loading if the login FAILED
       setLoading(false);
-    }
+    } 
+    // Removed "finally" block so we don't reset loading on success
   };
 
   return (
