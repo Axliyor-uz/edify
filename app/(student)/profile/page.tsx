@@ -314,9 +314,13 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+
+
               <div className="pt-2 flex-1">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
+                    
+                    
                     <h1 className="text-xl md:text-2xl font-black text-white flex items-center gap-3">
                       {userData.displayName}
                       {userData.role === 'teacher' && <span className="text-[10px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-wide">TEACHER</span>}
