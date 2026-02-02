@@ -7,7 +7,8 @@ import {
   signInWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup, 
-  deleteUser 
+  deleteUser,
+  sendPasswordResetEmail // 🟢 Imported
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -23,6 +24,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // 🟢 Reset Password State
+  const [resetLoading, setResetLoading] = useState(false);
 
   // 1. MANUAL LOGIN LOGIC
   const handleLogin = async (e: React.FormEvent) => {
@@ -54,11 +58,9 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
       
-      // Keep loading true while redirecting...
-
     } catch (error: any) {
       console.error(error);
-      setLoading(false); // Stop loading only on error
+      setLoading(false); 
 
       if (error.code === "auth/invalid-credential") {
         toast.error("Invalid email or password.");
@@ -93,7 +95,6 @@ export default function LoginPage() {
         }
       } else {
         // FAIL: User tried to login but has no account
-        // We must delete the Auth user to prevent "Ghost" accounts (Auth exists but Firestore doesn't)
         await deleteUser(user); 
         setLoading(false);
         toast.error("Account not found. Please Sign Up first to create your profile.");
@@ -103,6 +104,31 @@ export default function LoginPage() {
       console.error(error);
       setLoading(false);
       toast.error("Google Sign-In failed.");
+    }
+  };
+
+  // 🟢 3. FORGOT PASSWORD LOGIC
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first.");
+      return;
+    }
+    
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset link sent! Check your email.");
+    } catch (error: any) {
+      console.error(error);
+      if (error.code === 'auth/user-not-found') {
+        toast.error("No account found with this email.");
+      } else if (error.code === 'auth/invalid-email') {
+        toast.error("Invalid email address.");
+      } else {
+        toast.error("Failed to send reset link.");
+      }
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -189,6 +215,18 @@ export default function LoginPage() {
                 className="absolute right-4 top-3.5 text-slate-500 hover:text-white transition-colors"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            
+            {/* 🟢 FORGOT PASSWORD LINK */}
+            <div className="flex justify-end">
+              <button 
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50 hover:underline"
+              >
+                {resetLoading ? 'Sending...' : 'Forgot Password?'}
               </button>
             </div>
           </div>
