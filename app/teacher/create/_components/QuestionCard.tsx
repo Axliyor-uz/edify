@@ -1,20 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, Plus, Eye, EyeOff } from 'lucide-react';
+import { Check, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import LatexRenderer from '@/components/LatexRenderer';
 
 interface Props {
   question: any; 
   isAdded: boolean;
-  onAdd: () => void;
-  index: number; // 👈 1. New Prop for Numbering
+  onToggle: () => void;
+  index: number;
+  disabled?: boolean;
 }
 
-export default function QuestionCard({ question, isAdded, onAdd, index }: Props) {
+export default function QuestionCard({ question, isAdded, onToggle, index, disabled }: Props) {
   const [showOptions, setShowOptions] = useState(false);
 
-  // Safe Text Helper
   const getText = (obj: any) => {
     if (!obj) return "";
     if (typeof obj === 'string') return obj;
@@ -24,85 +24,102 @@ export default function QuestionCard({ question, isAdded, onAdd, index }: Props)
   const questionText = getText(question.question || question.text);
   const options = question.options || {};
   const correctAnswer = question.answer; 
+  const difficulty = (question.difficulty || 'medium').toLowerCase();
+
+  // 🟢 FIX: Define the map separately with the correct type
+  const badgeColors: Record<string, string> = {
+    easy: 'text-emerald-700 bg-emerald-50 border-emerald-100',
+    medium: 'text-amber-700 bg-amber-50 border-amber-100',
+    hard: 'text-rose-700 bg-rose-50 border-rose-100',
+  };
+
+  const badgeClass = badgeColors[difficulty] || 'text-slate-600 bg-slate-50 border-slate-100';
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group">
-      
-      {/* 1. QUESTION TEXT */}
-      <div className="flex justify-between items-start gap-3">
-        {/* 🟢 FIX 2: Added 'min-w-0', 'break-words', and 'overflow-x-auto' */}
-        <div className="flex-1 text-sm text-slate-700 font-medium leading-relaxed min-w-0 break-words overflow-x-auto">
-          {/* 🟢 FIX 1: Display the Index */}
-          <span className="font-bold text-slate-900 mr-2">{index}.</span>
-          
-          {/* Inline block ensures text flows after the number, but math blocks might drop to new line depending on LatexRenderer */}
-          <span className="inline">
-             <LatexRenderer latex={questionText} />
-          </span>
-        </div>
+    <div 
+      className={`
+        relative bg-white rounded-xl border transition-all duration-200 group
+        ${isAdded 
+          ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md z-10' 
+          : 'border-slate-200 hover:border-indigo-300 shadow-sm'}
+      `}
+    >
+      <div className="p-3 md:p-4 flex gap-3 md:gap-4 items-start">
         
-        <button 
-          onClick={onAdd}
-          disabled={isAdded}
-          className={`p-2 rounded-lg transition-all shrink-0 ml-2 ${
-            isAdded 
-              ? 'bg-green-100 text-green-600 cursor-default' 
-              : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'
-          }`}
-        >
-          {isAdded ? <CheckCircle size={20} /> : <Plus size={20} />}
-        </button>
-      </div>
+        {/* 1. Left: Number Only */}
+        <div className="pt-1 shrink-0">
+          <span className="text-xs font-bold text-slate-400 font-mono">#{index}</span>
+        </div>
 
-      {/* 2. TOOLBAR */}
-      <div className="flex flex-wrap gap-2 mt-3 border-t border-slate-50 pt-3">
-         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-             (question.difficulty || '').toLowerCase() === 'hard' ? 'bg-red-50 text-red-600 border-red-100' :
-             (question.difficulty || '').toLowerCase() === 'medium' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-             'bg-green-50 text-green-600 border-green-100'
-         }`}>
-           {question.difficulty || 'Normal'}
-         </span>
-         
-         {/* Toggle Options */}
-         {Object.keys(options).length > 0 && (
-           <button 
-             onClick={() => setShowOptions(!showOptions)}
-             className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors"
-           >
-             {showOptions ? <EyeOff size={10} /> : <Eye size={10} />}
-             {showOptions ? 'Hide Options' : 'Show Options'}
-           </button>
-         )}
-      </div>
+        {/* 2. Middle: Content (Expands) */}
+        <div className="flex-1 min-w-0">
+          
+          {/* Metadata Badge */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border tracking-wide ${badgeClass}`}>
+              {difficulty}
+            </span>
+          </div>
 
-      {/* 3. OPTIONS PANEL */}
-      {showOptions && (
-        <div className="mt-3 grid grid-cols-1 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          {Object.entries(options).map(([key, val]: any) => {
-            const isCorrect = key === correctAnswer;
-            return (
-              <div 
-                key={key} 
-                className={`text-xs p-2 rounded-lg border flex gap-3 items-start ${
-                  isCorrect 
-                    ? 'bg-green-50 border-green-200 text-green-800' 
-                    : 'bg-slate-50 border-slate-100 text-slate-600'
-                }`}
+          {/* Question Text */}
+          <div className="text-slate-800 text-sm leading-relaxed overflow-x-auto min-w-0 break-words custom-scrollbar">
+             <LatexRenderer latex={questionText} />
+          </div>
+
+          {/* Toggle Options Button */}
+          {Object.keys(options).length > 0 && (
+            <div className="mt-3">
+              <button 
+                onClick={() => setShowOptions(!showOptions)}
+                className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors px-2 py-1 rounded bg-slate-50 hover:bg-slate-100 border border-transparent hover:border-slate-200"
               >
-                <span className={`font-bold w-5 h-5 flex items-center justify-center rounded text-[10px] shrink-0 mt-0.5 ${isCorrect ? 'bg-green-200' : 'bg-slate-200'}`}>
-                  {key}
-                </span>
-                
-                {/* 🟢 FIX 3: Ensure options also wrap correctly */}
-                <div className="flex-1 min-w-0 break-words overflow-x-auto">
-                  <LatexRenderer latex={getText(val)} />
+                {showOptions ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                {showOptions ? 'Hide Options' : 'Show Options'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Right: Toggle Button */}
+        <div className="pt-0.5 shrink-0 ml-1">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!disabled || isAdded) onToggle();
+            }}
+            disabled={disabled && !isAdded}
+            className={`
+              w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm
+              ${isAdded 
+                ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' 
+                : disabled 
+                  ? 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed'
+                  : 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:shadow-md hover:scale-105'
+              }
+            `}
+            title={isAdded ? "Remove" : disabled ? "Limit reached (Max 100)" : "Add"}
+          >
+            {isAdded ? <Minus size={18} strokeWidth={3} /> : <Plus size={18} strokeWidth={3} />}
+          </button>
+        </div>
+
+      </div>
+
+      {/* Options Panel */}
+      {showOptions && (
+        <div className="bg-slate-50/50 border-t border-slate-100 px-3 py-3 md:px-4 rounded-b-xl animate-in slide-in-from-top-1 fade-in duration-200">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {Object.entries(options).map(([key, val]: any) => {
+              const isCorrect = key === correctAnswer;
+              return (
+                <div key={key} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-slate-200 text-slate-600'}`}>
+                  <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold shrink-0 mt-0.5 ${isCorrect ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{key}</span>
+                  <div className="min-w-0 overflow-x-auto break-words flex-1"><LatexRenderer latex={getText(val)} /></div>
+                  {isCorrect && <Check size={14} className="text-emerald-600 shrink-0" />}
                 </div>
-                
-                {isCorrect && <CheckCircle size={14} className="text-green-600 shrink-0 mt-1" />}
-              </div>
-            );
-          })}
+              );
+            })}
+           </div>
         </div>
       )}
     </div>
