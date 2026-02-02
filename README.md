@@ -1,7 +1,7 @@
 # MathMaster - Intelligent Educational Platform (Documentation)
 
 ## 📌 1. Project Overview
-MathMaster is a trilingual (Uzbek, Russian, English) adaptive learning platform for Algebra and Geometry. It combines a **structured syllabus map** with **gamified testing**.
+MathMaster is a trilingual (Uzbek, Russian, English) adaptive learning platform for all subjects. It combines a **structured syllabus map** with **gamified testing**.
 
 **Key Features:**
 * **Trilingual Support:** Instant toggle between languages for all math questions.
