@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react"; // 🟢 Added useContext
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,24 +15,169 @@ import { doc, writeBatch, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { checkUsernameUnique } from "@/services/userService";
 import {
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle,
-  XCircle,
-  GraduationCap,
-  School,
-  User,
-  Mail,
-  Lock,
-  MapPin,
-  Building2,
-  BookOpen,
-  Eye,
-  EyeOff,
+  Loader2, ArrowRight, ArrowLeft, CheckCircle, XCircle, GraduationCap,
+  School, User, Mail, Lock, MapPin, Building2, Eye, EyeOff,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { motion } from "framer-motion";
+import { LanguageContext } from "@/app/(public)/layout"; // 🟢 Import Context
+
+// --- 1. TRANSLATION DICTIONARY ---
+const SIGNUP_TRANSLATIONS = {
+  uz: {
+    steps: {
+      0: { title: "Yo'nalishni tanlang", sub: "O'qishni xohlaysizmi yoki o'qitishni?" },
+      1: { title: "Hisob yaratish", sub: "1 / 4 qadam" },
+      2: { title: "Shaxsiy ma'lumotlar", sub: "2 / 4 qadam" },
+      3: { title: "Joylashuv", sub: "3 / 4 qadam" },
+      4: { title: "Ta'lim / Ish", sub: "4 / 4 qadam" },
+      10: { title: "Deyarli tayyor!", sub: "Bir nechta ma'lumot qoldi" }
+    },
+    roles: {
+      student: { title: "Men O'quvchiman", desc: "Matematikani o'rganish, XP yig'ish va natijalarni kuzatish." },
+      teacher: { title: "Men O'qituvchiman", desc: "Testlar yaratish va o'quvchilarni boshqarish." }
+    },
+    inputs: {
+      email: "Email manzili",
+      username: "Foydalanuvchi nomi",
+      password: "Parol",
+      confirm: "Parolni tasdiqlang",
+      fullname: "To'liq ism (F.I.O)",
+      birth: "Tug'ilgan sana",
+      phone: "Telefon",
+      institution: "Maktab / Universitet nomi",
+      institutionOrg: "Maktab / Tashkilot nomi"
+    },
+    selects: {
+      region: "Viloyatni tanlang",
+      district: "Tumanni tanlang",
+      grade: "Sinf / Kursni tanlang",
+      subject: "Fanni tanlang"
+    },
+    buttons: {
+      google: "Google orqali davom etish",
+      next: "Keyingi qadam",
+      back: "Ortga",
+      complete: "Ro'yxatdan o'tish",
+      finalize: "Yakunlash va Kirish",
+      loginLink: "Hisobingiz bormi? Kirish"
+    },
+    validation: {
+      fillAll: "Iltimos, barcha maydonlarni to'ldiring.",
+      userTaken: "Bu nom band qilingan.",
+      passMatch: "Parollar mos kelmadi.",
+      phoneInvalid: "Noto'g'ri telefon raqami.",
+      location: "Iltimos, joylashuvni tanlang.",
+      welcome: "Xush kelibsiz, {role}!"
+    },
+    placeholders: {
+      username: "Foydalanuvchi nomini tanlang"
+    },
+    terms: "Foydalanish shartlari va Maxfiylik siyosatiga roziman."
+  },
+  en: {
+    steps: {
+      0: { title: "Choose your path", sub: "Are you learning or teaching?" },
+      1: { title: "Create Account", sub: "Step 1 of 4" },
+      2: { title: "Create Account", sub: "Step 2 of 4" },
+      3: { title: "Create Account", sub: "Step 3 of 4" },
+      4: { title: "Create Account", sub: "Step 4 of 4" },
+      10: { title: "Almost there!", sub: "Just a few more details" }
+    },
+    roles: {
+      student: { title: "I am a Student", desc: "I want to learn math, earn XP, and track my progress." },
+      teacher: { title: "I am a Teacher", desc: "I want to create tests and manage my students." }
+    },
+    inputs: {
+      email: "Email Address",
+      username: "Username",
+      password: "Password",
+      confirm: "Confirm",
+      fullname: "Full Name",
+      birth: "Date of Birth",
+      phone: "Phone",
+      institution: "School / University Name",
+      institutionOrg: "School / Organization Name"
+    },
+    selects: {
+      region: "Select Region",
+      district: "Select District",
+      grade: "Select Grade / Year",
+      subject: "Select Subject"
+    },
+    buttons: {
+      google: "Continue with Google",
+      next: "Next Step",
+      back: "Back",
+      complete: "Complete Registration",
+      finalize: "Complete & Enter",
+      loginLink: "Already have an account? Log in"
+    },
+    validation: {
+      fillAll: "Please fill in all fields.",
+      userTaken: "Username is taken.",
+      passMatch: "Passwords do not match.",
+      phoneInvalid: "Invalid phone number.",
+      location: "Please select your location.",
+      welcome: "Welcome, {role}!"
+    },
+    placeholders: {
+      username: "Choose a Username"
+    },
+    terms: "I agree to the Terms of Service and Privacy Policy."
+  },
+  ru: {
+    steps: {
+      0: { title: "Выберите путь", sub: "Вы учитесь или преподаете?" },
+      1: { title: "Создать аккаунт", sub: "Шаг 1 из 4" },
+      2: { title: "Личные данные", sub: "Шаг 2 из 4" },
+      3: { title: "Местоположение", sub: "Шаг 3 из 4" },
+      4: { title: "Образование / Работа", sub: "Шаг 4 из 4" },
+      10: { title: "Почти готово!", sub: "Еще немного деталей" }
+    },
+    roles: {
+      student: { title: "Я Ученик", desc: "Хочу изучать математику, получать XP и следить за прогрессом." },
+      teacher: { title: "Я Учитель", desc: "Хочу создавать тесты и управлять учениками." }
+    },
+    inputs: {
+      email: "Эл. почта",
+      username: "Имя пользователя",
+      password: "Пароль",
+      confirm: "Подтвердить",
+      fullname: "Ф.И.О",
+      birth: "Дата рождения",
+      phone: "Телефон",
+      institution: "Название Школы / ВУЗа",
+      institutionOrg: "Название Школы / Организации"
+    },
+    selects: {
+      region: "Выберите регион",
+      district: "Выберите район",
+      grade: "Выберите класс / курс",
+      subject: "Выберите предмет"
+    },
+    buttons: {
+      google: "Продолжить с Google",
+      next: "Далее",
+      back: "Назад",
+      complete: "Завершить",
+      finalize: "Завершить и Войти",
+      loginLink: "Уже есть аккаунт? Войти"
+    },
+    validation: {
+      fillAll: "Пожалуйста, заполните все поля.",
+      userTaken: "Имя пользователя занято.",
+      passMatch: "Пароли не совпадают.",
+      phoneInvalid: "Неверный номер телефона.",
+      location: "Пожалуйста, выберите местоположение.",
+      welcome: "Добро пожаловать, {role}!"
+    },
+    placeholders: {
+      username: "Выберите имя пользователя"
+    },
+    terms: "Я согласен с Условиями использования и Политикой конфиденциальности."
+  }
+};
 
 // --- DATA: Expanded Uzbekistan Regions (Unchanged) ---
 const UZB_LOCATIONS: Record<string, string[]> = {
@@ -84,10 +229,13 @@ const validateUsernameFormat = (username: string) => {
 
 export default function SignupPage() {
   const router = useRouter();
+  
+  // 🟢 CONSUME CONTEXT
+  // Using 'as any' to bypass strict context null checks for simplicity
+  const { lang } = useContext(LanguageContext) as { lang: 'uz' | 'en' | 'ru' };
+  const t = SIGNUP_TRANSLATIONS[lang];
 
   // State
-  // Step 0: Role, Step 1: Login, Step 2: Personal, Step 3: Location, Step 4: Work/Edu
-  // Step 10: Google Finalization (Special State)
   const [step, setStep] = useState(0); 
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<"student" | "teacher">("student");
@@ -129,7 +277,6 @@ export default function SignupPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  // 1. USERNAME CHECK (Works for both Manual and Google Finalize)
   useEffect(() => {
     const check = async () => {
       setUsernameAvailable(null);
@@ -158,7 +305,6 @@ export default function SignupPage() {
     return () => clearTimeout(timeoutId);
   }, [formData.username]);
 
-  // 2. GOOGLE SIGN IN LOGIC
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -166,23 +312,19 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if user exists in DB
       const userDoc = await getDoc(doc(db, "users", user.uid));
 
       if (userDoc.exists()) {
-        // --- SCENARIO A: ACCOUNT EXISTS ---
         const existingData = userDoc.data();
         toast.success(`Welcome back, ${existingData.displayName || "User"}!`);
-        // Redirect based on stored role, ignoring current selection
         if (existingData.role === "teacher") {
           router.push("/teacher/dashboard");
         } else {
           router.push("/dashboard");
         }
       } else {
-        // --- SCENARIO B: NEW ACCOUNT (LIMBO) ---
         setGoogleUser(user);
-        setStep(10); // Go to "Google Finalize" step
+        setStep(10);
         setLoading(false);
       }
     } catch (error: any) {
@@ -192,59 +334,47 @@ export default function SignupPage() {
     }
   };
 
-  // 3. GOOGLE FINALIZE (Submit)
   const handleGoogleFinalize = async () => {
     if (!googleUser) return;
     
-    // Validate
-    if (!formData.username) return toast.error("Username is required");
+    if (!formData.username) return toast.error(t.validation.fillAll);
     if (usernameError) return toast.error(usernameError);
-    if (usernameAvailable === false) return toast.error("Username is taken");
-    if (role === 'teacher' && !formData.schoolSubject) return toast.error("Please select a subject");
+    if (usernameAvailable === false) return toast.error(t.validation.userTaken);
+    if (role === 'teacher' && !formData.schoolSubject) return toast.error(t.validation.fillAll);
 
     setLoading(true);
     try {
       const batch = writeBatch(db);
       const userRef = doc(db, "users", googleUser.uid);
 
-      // Construct Profile (Lazy Data Collection: Nulls for missing fields)
       const newProfile: any = {
         uid: googleUser.uid,
         email: googleUser.email,
         username: formData.username.toLowerCase(),
         displayName: googleUser.displayName || "User",
         photoURL: googleUser.photoURL || null,
-        phone: null, // Lazy
-        birthDate: null, // Lazy
+        phone: null,
+        birthDate: null,
         role: role,
-        institution: null, // Lazy
-        location: {
-          country: "Uzbekistan",
-          region: null,
-          district: null,
-        },
+        institution: null,
+        location: { country: "Uzbekistan", region: null, district: null },
         createdAt: new Date().toISOString(),
       };
 
       if (role === "student") {
-        newProfile.grade = null; // Lazy
+        newProfile.grade = null;
         newProfile.totalXP = 0;
         newProfile.currentStreak = 0;
         newProfile.level = 1;
         newProfile.dailyHistory = {};
-        newProfile.progress = {
-          completedTopicIndex: 0,
-          completedChapterIndex: 0,
-          completedSubtopicIndex: 0,
-        };
+        newProfile.progress = { completedTopicIndex: 0, completedChapterIndex: 0, completedSubtopicIndex: 0 };
       } else {
         newProfile.grade = "Teacher";
-        newProfile.subject = formData.schoolSubject; // Saved!
+        newProfile.subject = formData.schoolSubject;
         newProfile.verifiedTeacher = false;
         newProfile.createdTests = [];
       }
 
-      // Commit
       batch.set(userRef, newProfile);
       batch.set(doc(db, "usernames", formData.username.toLowerCase()), { uid: googleUser.uid });
 
@@ -262,34 +392,32 @@ export default function SignupPage() {
     }
   };
 
-  // 4. MANUAL VALIDATION (Existing)
   const handleNext = () => {
     if (step === 1) {
       if (!formData.email || !formData.username || !formData.password)
-        return toast.error("Please fill in all fields.");
+        return toast.error(t.validation.fillAll);
       if (usernameError) return toast.error(usernameError);
-      if (usernameAvailable === false) return toast.error("Username is taken.");
+      if (usernameAvailable === false) return toast.error(t.validation.userTaken);
       if (usernameAvailable === null && formData.username.length > 0)
         return toast.error("Checking username...");
       const pwdError = validatePassword(formData.password);
       if (pwdError) return toast.error(pwdError);
       if (formData.password !== formData.confirmPassword)
-        return toast.error("Passwords do not match.");
+        return toast.error(t.validation.passMatch);
     }
     if (step === 2) {
       if (!formData.fullName || !formData.birthDate || !formData.phone)
-        return toast.error("Please fill in personal info.");
+        return toast.error(t.validation.fillAll);
       if (formData.phone.length < 17)
-        return toast.error("Invalid phone number.");
+        return toast.error(t.validation.phoneInvalid);
     }
     if (step === 3) {
       if (!formData.region || !formData.district)
-        return toast.error("Please select your location.");
+        return toast.error(t.validation.location);
     }
     setStep((prev) => prev + 1);
   };
 
-  // 5. MANUAL SUBMIT (Existing)
   const handleManualSignup = async () => {
     setLoading(true);
     let user = null;
@@ -310,11 +438,7 @@ export default function SignupPage() {
         birthDate: formData.birthDate,
         role: role,
         institution: formData.institutionName,
-        location: {
-          country: formData.country,
-          region: formData.region,
-          district: formData.district,
-        },
+        location: { country: formData.country, region: formData.region, district: formData.district },
         createdAt: new Date().toISOString(),
       };
 
@@ -336,7 +460,7 @@ export default function SignupPage() {
       batch.set(doc(db, "usernames", formData.username.toLowerCase()), { uid: user.uid });
 
       await batch.commit();
-      toast.success(`Welcome, ${role === "teacher" ? "Professor" : "Student"}!`);
+      toast.success(t.validation.welcome.replace("{role}", role === "teacher" ? "Professor" : "Student"));
       if (role === "teacher") router.push("/teacher/dashboard");
       else router.push("/dashboard");
     } catch (error: any) {
@@ -348,6 +472,10 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  // Determine current step text
+  // @ts-ignore - safe index access
+  const stepText = t.steps[step] || t.steps[1];
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
@@ -362,10 +490,10 @@ export default function SignupPage() {
         {/* HEADER */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black text-white tracking-tight">
-            {step === 0 ? "Choose your path" : step === 10 ? "Almost there!" : "Create Account"}
+            {stepText.title}
           </h1>
           <p className="text-slate-400 mt-2 font-medium">
-            {step === 0 ? "Are you learning or teaching?" : step === 10 ? "Just a few more details" : `Step ${step} of 4`}
+            {stepText.sub}
           </p>
 
           {step > 0 && step < 10 && (
@@ -389,8 +517,8 @@ export default function SignupPage() {
                 <GraduationCap size={28} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white group-hover:text-cyan-400">I am a Student</h3>
-                <p className="text-sm text-slate-400">I want to learn math, earn XP, and track my progress.</p>
+                <h3 className="text-lg font-bold text-white group-hover:text-cyan-400">{t.roles.student.title}</h3>
+                <p className="text-sm text-slate-400">{t.roles.student.desc}</p>
               </div>
             </button>
 
@@ -402,18 +530,18 @@ export default function SignupPage() {
                 <School size={28} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white group-hover:text-purple-400">I am a Teacher</h3>
-                <p className="text-sm text-slate-400">I want to create tests and manage my students.</p>
+                <h3 className="text-lg font-bold text-white group-hover:text-purple-400">{t.roles.teacher.title}</h3>
+                <p className="text-sm text-slate-400">{t.roles.teacher.desc}</p>
               </div>
             </button>
 
             <div className="mt-4 text-center">
-              <p className="text-sm text-slate-500">Already have an account? <Link href="/auth/login" className="text-cyan-400 font-bold hover:underline">Log in</Link></p>
+              <p className="text-sm text-slate-500">{t.buttons.loginLink.split('?')[0]}? <Link href="/auth/login" className="text-cyan-400 font-bold hover:underline">{t.buttons.loginLink.split('?')[1]}</Link></p>
             </div>
           </div>
         )}
 
-        {/* STEP 10: GOOGLE FINALIZE (Interstitial) */}
+        {/* STEP 10: GOOGLE FINALIZE */}
         {step === 10 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right">
              <div className="flex justify-center mb-4">
@@ -429,7 +557,7 @@ export default function SignupPage() {
                <input
                  name="username"
                  type="text"
-                 placeholder="Choose a Username"
+                 placeholder={t.placeholders.username}
                  required
                  value={formData.username}
                  onChange={handleChange}
@@ -440,10 +568,9 @@ export default function SignupPage() {
                  {isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> : usernameError ? <XCircle className="text-red-500" size={20} /> : usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> : usernameAvailable === false ? <XCircle className="text-amber-500" size={20} /> : null}
                </div>
                {usernameError && <p className="text-[10px] text-red-400 font-bold mt-1 ml-1">{usernameError}</p>}
-               {usernameAvailable === false && <p className="text-[10px] text-amber-400 font-bold mt-1 ml-1">Username taken.</p>}
+               {usernameAvailable === false && <p className="text-[10px] text-amber-400 font-bold mt-1 ml-1">{t.validation.userTaken}</p>}
              </div>
 
-             {/* TEACHER SUBJECT SELECT */}
              {role === 'teacher' && (
                <select
                  name="schoolSubject"
@@ -452,7 +579,7 @@ export default function SignupPage() {
                  onChange={handleChange}
                  className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium transition"
                >
-                 <option value="">Select Subject</option>
+                 <option value="">{t.selects.subject}</option>
                  <option value="matematika">Matematika</option>
                  <option value="fizika">Fizika</option>
                  <option value="kimyo">Kimyo</option>
@@ -472,7 +599,7 @@ export default function SignupPage() {
                disabled={loading || !usernameAvailable}
                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
              >
-               {loading ? <Loader2 className="animate-spin" /> : "Complete & Enter"}
+               {loading ? <Loader2 className="animate-spin" /> : t.buttons.finalize}
              </button>
           </div>
         )}
@@ -484,7 +611,6 @@ export default function SignupPage() {
             {step === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right">
                 
-                {/* 1. GOOGLE BUTTON (NEW) */}
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
@@ -501,40 +627,38 @@ export default function SignupPage() {
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                       </svg>
-                      Continue with Google
+                      {t.buttons.google}
                     </>
                   )}
                 </button>
 
-                {/* 2. DIVIDER */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-slate-700"></div>
                   <span className="text-xs text-slate-500 font-bold uppercase">Or manually</span>
                   <div className="flex-1 h-px bg-slate-700"></div>
                 </div>
 
-                {/* 3. EXISTING INPUTS */}
                 <div className="relative group">
                   <Mail className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
-                  <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none transition font-medium" />
+                  <input name="email" type="email" placeholder={t.inputs.email} required value={formData.email} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none transition font-medium" />
                 </div>
 
                 <div className="relative group">
                   <User className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
-                  <input name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange} className={`w-full pl-12 pr-10 py-3.5 rounded-xl border-2 outline-none font-medium transition text-white bg-slate-800/50 placeholder:text-slate-600 ${usernameError ? "border-red-500/50 focus:border-red-500" : usernameAvailable === true ? "border-green-500/50 focus:border-green-500" : usernameAvailable === false ? "border-amber-500/50 focus:border-amber-500" : "border-slate-700/50 focus:border-cyan-500"}`} />
+                  <input name="username" type="text" placeholder={t.inputs.username} required value={formData.username} onChange={handleChange} className={`w-full pl-12 pr-10 py-3.5 rounded-xl border-2 outline-none font-medium transition text-white bg-slate-800/50 placeholder:text-slate-600 ${usernameError ? "border-red-500/50 focus:border-red-500" : usernameAvailable === true ? "border-green-500/50 focus:border-green-500" : usernameAvailable === false ? "border-amber-500/50 focus:border-amber-500" : "border-slate-700/50 focus:border-cyan-500"}`} />
                   <div className="absolute right-4 top-3.5">{isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> : usernameError ? <XCircle className="text-red-500" size={20} /> : usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> : usernameAvailable === false ? <XCircle className="text-amber-500" size={20} /> : null}</div>
                   {usernameError && <p className="text-[10px] text-red-400 font-bold mt-1 ml-1">{usernameError}</p>}
-                  {usernameAvailable === false && <p className="text-[10px] text-amber-400 font-bold mt-1 ml-1">Username is already taken.</p>}
+                  {usernameAvailable === false && <p className="text-[10px] text-amber-400 font-bold mt-1 ml-1">{t.validation.userTaken}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative group">
                     <Lock className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
-                    <input name="password" type={showPassword ? "text" : "password"} placeholder="Password" required value={formData.password} onChange={handleChange} className="w-full pl-10 pr-8 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" />
+                    <input name="password" type={showPassword ? "text" : "password"} placeholder={t.inputs.password} required value={formData.password} onChange={handleChange} className="w-full pl-10 pr-8 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-3.5 text-slate-500 hover:text-white transition-colors">{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                   </div>
                   <div className="relative group">
-                    <input name="confirmPassword" type={showPassword ? "text" : "password"} placeholder="Confirm" required value={formData.confirmPassword} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" />
+                    <input name="confirmPassword" type={showPassword ? "text" : "password"} placeholder={t.inputs.confirm} required value={formData.confirmPassword} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition text-sm" />
                   </div>
                 </div>
               </div>
@@ -543,14 +667,14 @@ export default function SignupPage() {
             {/* STEP 2: PERSONAL */}
             {step === 2 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right">
-                <input name="fullName" type="text" placeholder="Full Name" required value={formData.fullName} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                <input name="fullName" type="text" placeholder={t.inputs.fullname} required value={formData.fullName} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">Date of Birth</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">{t.inputs.birth}</label>
                     <input name="birthDate" type="date" required max={new Date().toISOString().split("T")[0]} value={formData.birthDate} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">Phone</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 block">{t.inputs.phone}</label>
                     <input name="phone" type="tel" required value={formData.phone} onChange={handleChange} placeholder="+998" className="w-full px-4 py-3 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
                   </div>
                 </div>
@@ -565,11 +689,11 @@ export default function SignupPage() {
                   <input name="country" type="text" value="Uzbekistan" disabled className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-slate-400 font-bold cursor-not-allowed" />
                 </div>
                 <select name="region" value={formData.region} required onChange={(e) => setFormData({ ...formData, region: e.target.value, district: "" })} className={`w-full px-4 py-3.5 rounded-xl border-2 ${formData.region ? "border-slate-700/50" : "border-red-500"} bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium`}>
-                  <option value="">Select Region</option>
+                  <option value="">{t.selects.region}</option>
                   {Object.keys(UZB_LOCATIONS).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <select name="district" value={formData.district} required onChange={handleChange} disabled={!formData.region} className={`w-full px-4 py-3.5 rounded-xl border-2 ${formData.district ? "border-slate-700/50" : "border-red-500"} bg-slate-800 text-white focus:border-cyan-500 outline-none disabled:opacity-50 font-medium`}>
-                  <option value="">Select District</option>
+                  <option value="">{t.selects.district}</option>
                   {formData.region && UZB_LOCATIONS[formData.region]?.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -580,11 +704,11 @@ export default function SignupPage() {
               <div className="space-y-4 animate-in fade-in slide-in-from-right">
                 <div className="relative group">
                   <Building2 className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={20} />
-                  <input name="institutionName" type="text" placeholder={role === "student" ? "School / University Name" : "School / Organization Name"} required value={formData.institutionName} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
+                  <input name="institutionName" type="text" placeholder={role === "student" ? t.inputs.institution : t.inputs.institutionOrg} required value={formData.institutionName} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800/50 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:bg-slate-800 outline-none font-medium transition" />
                 </div>
                 {role === "student" ? (
                   <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium">
-                    <option value="">Select Grade / Year</option>
+                    <option value="">{t.selects.grade}</option>
                     <option value="school_7">7th Grade</option>
                     <option value="school_8">8th Grade</option>
                     <option value="school_9">9th Grade</option>
@@ -597,7 +721,7 @@ export default function SignupPage() {
                   </select>
                 ) : (
                   <select name="schoolSubject" required value={formData.schoolSubject} onChange={handleChange} className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-700/50 bg-slate-800 text-white focus:border-cyan-500 outline-none font-medium transition">
-                    <option value="">Select Subject</option>
+                    <option value="">{t.selects.subject}</option>
                     <option value="matematika">Matematika</option>
                     <option value="fizika">Fizika</option>
                     <option value="kimyo">Kimyo</option>
@@ -613,17 +737,17 @@ export default function SignupPage() {
                 )}
                 <div className="flex items-start gap-3 mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-slate-300">
                   <input type="checkbox" required className="mt-1 w-4 h-4 rounded cursor-pointer accent-cyan-500" />
-                  <p className="text-xs font-medium">I agree to the <Link href="#" className="underline hover:text-cyan-400">Terms of Service</Link> and <Link href="#" className="underline hover:text-cyan-400">Privacy Policy</Link>.</p>
+                  <p className="text-xs font-medium">{t.terms}</p>
                 </div>
               </div>
             )}
 
             <div className="flex gap-3 mt-8">
-              <button onClick={() => setStep((s) => s - 1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition flex items-center gap-2"><ArrowLeft size={18} /> Back</button>
+              <button onClick={() => setStep((s) => s - 1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition flex items-center gap-2"><ArrowLeft size={18} /> {t.buttons.back}</button>
               {step < 4 ? (
-                <button onClick={handleNext} className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">Next Step <ArrowRight size={18} /></button>
+                <button onClick={handleNext} className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">{t.buttons.next} <ArrowRight size={18} /></button>
               ) : (
-                <button onClick={handleManualSignup} disabled={loading} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin" /> : "Complete Registration"}</button>
+                <button onClick={handleManualSignup} disabled={loading} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin" /> : t.buttons.complete}</button>
               )}
             </div>
           </form>
