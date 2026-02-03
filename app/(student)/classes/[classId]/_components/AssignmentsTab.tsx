@@ -5,6 +5,7 @@ import {
   FileText, CheckCircle, Clock, ArrowRight, Lock, 
   AlertCircle, RotateCcw, Calendar, ShieldCheck, Trophy 
 } from 'lucide-react';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Language Hook
 
 interface Props {
   assignments: any[];
@@ -12,8 +13,82 @@ interface Props {
   classId: string;
 }
 
+// --- 1. TRANSLATION DICTIONARY ---
+const ASSIGNMENT_TRANSLATIONS = {
+  uz: {
+    empty: {
+      title: "Faol topshiriqlar yo'q",
+      desc: "Hozircha barcha vazifalar bajarilgan."
+    },
+    meta: {
+      questions: "Savol",
+      noLimit: "Vaqt Cheklovisiz",
+      mins: "daq",
+      closed: "Yopilgan",
+      due: "Muddat",
+      attempts: "Urinishlar",
+      infinite: "∞"
+    },
+    status: {
+      locked: "Qulflangan",
+      view: "Natijani Ko'rish",
+      missed: "O'tkazib yuborilgan",
+      retake: "Qayta Topshirish",
+      start: "Boshlash"
+    }
+  },
+  en: {
+    empty: {
+      title: "No active assignments",
+      desc: "You're all caught up for now."
+    },
+    meta: {
+      questions: "Questions",
+      noLimit: "No Time Limit",
+      mins: "mins",
+      closed: "Closed",
+      due: "Due",
+      attempts: "Attempts",
+      infinite: "∞"
+    },
+    status: {
+      locked: "Locked",
+      view: "View Results",
+      missed: "Missed",
+      retake: "Retake",
+      start: "Start"
+    }
+  },
+  ru: {
+    empty: {
+      title: "Нет активных заданий",
+      desc: "На данный момент все выполнено."
+    },
+    meta: {
+      questions: "Вопросов",
+      noLimit: "Без ограничений",
+      mins: "мин",
+      closed: "Закрыто",
+      due: "Срок",
+      attempts: "Попытки",
+      infinite: "∞"
+    },
+    status: {
+      locked: "Закрыто",
+      view: "Результаты",
+      missed: "Пропущено",
+      retake: "Пересдать",
+      start: "Начать"
+    }
+  }
+};
+
 export default function AssignmentsTab({ assignments, myAttempts, classId }: Props) {
   const router = useRouter();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = ASSIGNMENT_TRANSLATIONS[lang];
 
   if (assignments.length === 0) {
     return (
@@ -21,8 +96,8 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
         <div className="p-4 bg-slate-800 rounded-full shadow-lg mb-4">
           <FileText className="text-slate-400" size={32} />
         </div>
-        <h3 className="text-slate-300 font-bold text-lg">No active assignments</h3>
-        <p className="text-slate-400 text-sm">You're all caught up for now.</p>
+        <h3 className="text-slate-300 font-bold text-lg">{t.empty.title}</h3>
+        <p className="text-slate-400 text-sm">{t.empty.desc}</p>
       </div>
     );
   }
@@ -30,12 +105,11 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
   return (
     <div className="grid gap-4">
       {assignments.map((assign: any) => {
-        // --- 1. CALCULATE STATUS ---
+        // --- 1. CALCULATE STATUS (UNCHANGED LOGIC) ---
         const attemptDoc = myAttempts.find((a: any) => a.assignmentId === assign.id);
         const attemptCount = attemptDoc ? (attemptDoc.attemptsTaken || 1) : 0;
         const maxAttempts = assign.allowedAttempts ?? 1; 
         
-        // Calculate Score Percentage (if attempt exists)
         const scorePercent = attemptDoc 
           ? Math.round((attemptDoc.score / attemptDoc.totalQuestions) * 100) 
           : null;
@@ -49,6 +123,7 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
         const isLocked = openDate && now < openDate;
         const isExpired = dueDate && now > dueDate;
         
+        // Date formatting based on locale could be improved, but keeping simple for now
         const formatDate = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
@@ -77,21 +152,21 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
                 {/* 1. Question Count */}
                 <span className="flex items-center gap-1.5">
                   <FileText size={14} className="text-slate-500" />
-                  <span className="font-medium text-white">{assign.questionCount}</span> Questions
+                  <span className="font-medium text-white">{assign.questionCount}</span> {t.meta.questions}
                 </span>
 
-                {/* 2. Duration (Time Limit) - NEW 🟢 */}
+                {/* 2. Duration (Time Limit) */}
                 <span className="flex items-center gap-1.5">
                   <Clock size={14} className="text-slate-500" />
-                  {assign.duration ? `${assign.duration} mins` : 'No Time Limit'}
+                  {assign.duration ? `${assign.duration} ${t.meta.mins}` : t.meta.noLimit}
                 </span>
 
                 {/* 3. Due Date */}
                 {dueDate && (
                   <span className={`flex items-center gap-1.5 ${isExpired ? 'text-red-400 font-bold' : ''}`}>
                     <Calendar size={14} className={isExpired ? 'text-red-400' : 'text-slate-500'} />
-                    {isExpired ? 'Closed ' : 'Due '} 
-                    {formatDate(dueDate)} at {formatTime(dueDate)}
+                    {isExpired ? `${t.meta.closed} ` : `${t.meta.due} `} 
+                    {formatDate(dueDate)} - {formatTime(dueDate)}
                   </span>
                 )}
 
@@ -99,11 +174,11 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
                 {maxAttempts !== 1 && (
                   <span className="flex items-center gap-1.5 bg-slate-700/50 px-2 py-0.5 rounded text-slate-300">
                     <RotateCcw size={12} />
-                    <span className="font-medium text-white">{attemptCount}</span> / {maxAttempts === 0 ? '∞' : maxAttempts} Attempts
+                    <span className="font-medium text-white">{attemptCount}</span> / {maxAttempts === 0 ? t.meta.infinite : maxAttempts} {t.meta.attempts}
                   </span>
                 )}
 
-                {/* 5. Score Badge (If taken) - NEW 🟢 */}
+                {/* 5. Score Badge */}
                 {scorePercent !== null && (
                   <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded font-bold ${
                     scorePercent >= 60 ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
@@ -122,7 +197,7 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
               {isLocked ? (
                 <button disabled className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-slate-700/50 text-slate-400 font-bold rounded-lg border border-slate-600 flex items-center justify-center gap-2 text-sm cursor-not-allowed">
                   <Lock size={16} /> 
-                  <span>Locked</span>
+                  <span>{t.status.locked}</span>
                 </button>
               ) 
               /* CASE B: COMPLETED or EXPIRED & TRIED -> View Results */
@@ -131,13 +206,13 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
                   onClick={() => router.push(`/classes/${classId}/test/${assign.id}/results`)}
                   className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-slate-800 border border-slate-600 text-slate-300 font-bold rounded-lg hover:border-blue-500 hover:text-blue-400 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-lg"
                 >
-                  View Results <ArrowRight size={16} />
+                  {t.status.view} <ArrowRight size={16} />
                 </button>
               )
               /* CASE C: EXPIRED & NEVER TRIED -> Dead */
               : isExpired ? (
                 <div className="w-full md:w-auto px-4 md:px-5 py-2.5 bg-red-500/20 text-red-400 font-bold rounded-lg border border-red-500/30 flex items-center justify-center gap-2 text-sm">
-                  <AlertCircle size={16} /> Missed
+                  <AlertCircle size={16} /> {t.status.missed}
                 </div>
               )
               /* CASE D: AVAILABLE -> Start/Retake */
@@ -151,7 +226,7 @@ export default function AssignmentsTab({ assignments, myAttempts, classId }: Pro
                   }`}
                 >
                   {attemptCount > 0 ? <RotateCcw size={16}/> : <CheckCircle size={16}/>}
-                  {attemptCount > 0 ? 'Retake' : 'Start'}
+                  {attemptCount > 0 ? t.status.retake : t.status.start}
                 </button>
               )}
             </div>

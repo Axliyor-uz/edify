@@ -16,7 +16,7 @@ import { LanguageContext } from './layout'; // 🟢 Importing Context from Layou
 const TRANSLATIONS = {
   uz: {
     hero: {
-      badge: "✨ Baholash tizimining kelajagi shu yerda",
+      badge: "✨ Ta'lim tizimining kelajagi shu yerda",
       titlePrefix: "Platforma:",
       titleHighlight: "Zamonaviy Ta'lim",
       titleSuffix: "Uchun",
@@ -67,7 +67,7 @@ const TRANSLATIONS = {
       { title: "O'quvchi Profili", desc: "Akademik o'sish, yutuqlar va to'plangan nishonlarni kuzatib boring." }
     ],
     experienceTitle: "Platformani His Qiling",
-    experienceDesc: "Sinfning har ikki tomoni uchun moslashtirilgan vositalar.",
+    experienceDesc: "Ta'limning har ikki tomoni uchun moslashtirilgan vositalar.",
     footer: {
       desc: "Wasp-2 AI tomonidan quvvatlanadi. Maktablar va undan tashqari uchun keyingi avlod baholash vositalarini yaratish.",
       platform: "Platforma",
@@ -583,28 +583,31 @@ export default function LandingPage() {
                 {t.footer.desc}
               </p>
               
-              <div className="flex gap-4">
+              <div className="flex gap-5">
                 <motion.a 
                   href="https://github.com/Wasp-2-AI" 
                   target="_blank"
-                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                  whileHover={{ y: -3 }}
+                  className="w-12 h-12 rounded-xl bg-slate-800/70 flex items-center justify-center text-slate-400 hover:text-white hover:bg-gradient-to-br hover:from-purple-600 hover:to-cyan-500 transition-all border border-slate-700/50"
+                  whileHover={{ y: -4, scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  <Github className="w-5 h-5" />
+                  <Github className="w-6 h-6" />
                 </motion.a>
                 <motion.a 
                   href="https://www.linkedin.com/company/wasp-2-ai" 
-                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-slate-700 transition-colors"
-                  whileHover={{ y: -3 }}
+                  className="w-12 h-12 rounded-xl bg-slate-800/70 flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-gradient-to-br hover:from-blue-600 hover:to-cyan-500 transition-all border border-slate-700/50"
+                  whileHover={{ y: -4, scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  <Linkedin className="w-5 h-5" />
+                  <Linkedin className="w-6 h-6" />
                 </motion.a>
                 <motion.a 
                   href="https://t.me/u_m_i_d_j_o_n_006" 
-                  className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                  whileHover={{ y: -3 }}
+                  className="w-12 h-12 rounded-xl bg-slate-800/70 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:bg-gradient-to-br hover:from-cyan-600 hover:to-teal-500 transition-all border border-slate-700/50"
+                  whileHover={{ y: -4, scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  <Send className="w-5 h-5 -ml-0.5 mt-0.5" /> 
+                  <Send className="w-6 h-6 -ml-0.5 mt-0.5" /> 
                 </motion.a>
               </div>
             </div>

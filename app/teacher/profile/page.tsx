@@ -10,9 +10,76 @@ import {
   Mail, Phone, ShieldCheck, Globe, BookOpen,
   GraduationCap, Award, Loader2
 } from 'lucide-react';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const PROFILE_TRANSLATIONS = {
+  uz: {
+    notFound: "Profil topilmadi.",
+    edit: "Profilni Tahrirlash",
+    verified: "Tasdiqlangan",
+    instructor: "O'qituvchi",
+    student: "O'quvchi",
+    contactTitle: "Aloqa Ma'lumotlari",
+    email: "Email Manzili",
+    phone: "Telefon Raqami",
+    notProvided: "Kiritilmagan",
+    workTitle: "Joylashuv va Ish",
+    institution: "Muassasa",
+    location: "Joylashuv",
+    accountTitle: "Hisob Ma'lumotlari",
+    tests: "Yaratilgan Testlar",
+    classes: "Sinflar",
+    students: "O'quvchilar",
+    joined: "Qo'shilgan Yili"
+  },
+  en: {
+    notFound: "Profile not found.",
+    edit: "Edit Profile",
+    verified: "Verified",
+    instructor: "Instructor",
+    student: "Student",
+    contactTitle: "Contact Details",
+    email: "Email Address",
+    phone: "Phone Number",
+    notProvided: "Not provided",
+    workTitle: "Location & Work",
+    institution: "Institution",
+    location: "Location",
+    accountTitle: "Account Information",
+    tests: "Tests Created",
+    classes: "Classes",
+    students: "Students",
+    joined: "Joined"
+  },
+  ru: {
+    notFound: "Профиль не найден.",
+    edit: "Редактировать",
+    verified: "Подтвержден",
+    instructor: "Преподаватель",
+    student: "Ученик",
+    contactTitle: "Контактные Данные",
+    email: "Email адрес",
+    phone: "Телефон",
+    notProvided: "Не указано",
+    workTitle: "Местоположение и Работа",
+    institution: "Учреждение",
+    location: "Местоположение",
+    accountTitle: "Информация об Аккаунте",
+    tests: "Создано Тестов",
+    classes: "Классы",
+    students: "Ученики",
+    joined: "Дата регистрации"
+  }
+};
 
 export default function TeacherProfilePage() {
   const { user } = useAuth();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = PROFILE_TRANSLATIONS[lang];
+
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +113,7 @@ export default function TeacherProfilePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-600">Profile not found.</p>
+          <p className="text-slate-600">{t.notFound}</p>
         </div>
       </div>
     );
@@ -70,8 +137,8 @@ export default function TeacherProfilePage() {
                 className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-xl backdrop-blur-md font-bold text-xs md:text-sm transition-all hover:scale-105 active:scale-95 border border-white/30"
               >
                 <Settings size={16} /> 
-                <span className="hidden sm:inline">Edit Profile</span>
-                <span className="sm:hidden">Edit</span>
+                <span className="hidden sm:inline">{t.edit}</span>
+                <span className="sm:hidden">{t.edit}</span>
               </Link>
             </div>
           </div>
@@ -91,7 +158,7 @@ export default function TeacherProfilePage() {
                 <div className="flex flex-col gap-2 sm:hidden pb-2">
                   {profile.verifiedTeacher && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border-2 border-blue-200 shadow-sm">
-                      <ShieldCheck size={14} /> Verified
+                      <ShieldCheck size={14} /> {t.verified}
                     </span>
                   )}
                 </div>
@@ -104,7 +171,7 @@ export default function TeacherProfilePage() {
                 <h1 className="text-2xl md:text-3xl font-black text-slate-900">{profile.displayName}</h1>
                 {profile.verifiedTeacher && (
                   <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border-2 border-blue-200 shadow-sm">
-                    <ShieldCheck size={14} /> Verified Teacher
+                    <ShieldCheck size={14} /> {t.verified} {t.instructor}
                   </span>
                 )}
               </div>
@@ -113,7 +180,7 @@ export default function TeacherProfilePage() {
               {/* Role badge */}
               <div className="flex flex-wrap gap-2 mb-4">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 text-xs font-bold rounded-full border-2 border-indigo-200">
-                  <GraduationCap size={14} /> {profile.role === 'teacher' ? 'Instructor' : 'Student'}
+                  <GraduationCap size={14} /> {profile.role === 'teacher' ? t.instructor : t.student}
                 </span>
               </div>
 
@@ -137,7 +204,7 @@ export default function TeacherProfilePage() {
               <div className="p-2 bg-indigo-50 rounded-lg">
                 <User size={20} className="text-indigo-600"/>
               </div>
-              <h3 className="font-black text-slate-900 text-lg">Contact Details</h3>
+              <h3 className="font-black text-slate-900 text-lg">{t.contactTitle}</h3>
             </div>
             
             <div className="space-y-4">
@@ -146,7 +213,7 @@ export default function TeacherProfilePage() {
                   <Mail size={18}/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Email Address</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">{t.email}</p>
                   <p className="text-slate-800 font-semibold text-sm md:text-base break-words">{profile.email}</p>
                 </div>
               </div>
@@ -156,8 +223,8 @@ export default function TeacherProfilePage() {
                   <Phone size={18}/>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Phone Number</p>
-                  <p className="text-slate-800 font-semibold text-sm md:text-base">{profile.phone || 'Not provided'}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">{t.phone}</p>
+                  <p className="text-slate-800 font-semibold text-sm md:text-base">{profile.phone || t.notProvided}</p>
                 </div>
               </div>
             </div>
@@ -169,7 +236,7 @@ export default function TeacherProfilePage() {
               <div className="p-2 bg-purple-50 rounded-lg">
                 <Globe size={20} className="text-purple-600"/>
               </div>
-              <h3 className="font-black text-slate-900 text-lg">Location & Work</h3>
+              <h3 className="font-black text-slate-900 text-lg">{t.workTitle}</h3>
             </div>
             
             <div className="space-y-4">
@@ -178,8 +245,8 @@ export default function TeacherProfilePage() {
                   <BookOpen size={18}/>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Institution</p>
-                  <p className="text-slate-800 font-semibold text-sm md:text-base">{profile.institution || 'Not provided'}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">{t.institution}</p>
+                  <p className="text-slate-800 font-semibold text-sm md:text-base">{profile.institution || t.notProvided}</p>
                 </div>
               </div>
 
@@ -188,9 +255,9 @@ export default function TeacherProfilePage() {
                   <MapPin size={18}/>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Location</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">{t.location}</p>
                   <p className="text-slate-800 font-semibold text-sm md:text-base">
-                    {[profile.location?.district, profile.location?.region, profile.location?.country].filter(Boolean).join(', ') || 'Not provided'}
+                    {[profile.location?.district, profile.location?.region, profile.location?.country].filter(Boolean).join(', ') || t.notProvided}
                   </p>
                 </div>
               </div>
@@ -199,24 +266,24 @@ export default function TeacherProfilePage() {
 
         </div>
 
-        {/* --- STATS SECTION (Optional Enhancement) --- */}
+        {/* --- STATS SECTION --- */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl border-2 border-slate-700">
           <h3 className="text-white font-black text-lg md:text-xl mb-6 flex items-center gap-2">
             <Award size={24} className="text-indigo-400" />
-            Account Information
+            {t.accountTitle}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
               <p className="text-2xl md:text-3xl font-black text-white mb-1">-</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tests Created</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.tests}</p>
             </div>
             <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
               <p className="text-2xl md:text-3xl font-black text-white mb-1">-</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Classes</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.classes}</p>
             </div>
             <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
               <p className="text-2xl md:text-3xl font-black text-white mb-1">-</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Students</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.students}</p>
             </div>
             <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
               <p className="text-2xl md:text-3xl font-black text-white mb-1">
@@ -224,7 +291,7 @@ export default function TeacherProfilePage() {
                   ? (profile.createdAt.toDate ? new Date(profile.createdAt.toDate()).getFullYear() : new Date(profile.createdAt).getFullYear())
                   : '-'}
               </p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Joined</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.joined}</p>
             </div>
           </div>
         </div>

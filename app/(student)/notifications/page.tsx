@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  doc, writeBatch, limit, updateDoc // 🟢 Added updateDoc
+  doc, writeBatch, limit, updateDoc 
 } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { 
@@ -13,6 +13,50 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Language Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const NOTIF_TRANSLATIONS = {
+  uz: {
+    title: "Bildirishnomalar",
+    subtitle: "Faollik va yangilanishlar",
+    dismiss: "Yangi xabarlarni o'chirish",
+    emptyTitle: "Hammasi ko'rib chiqildi!",
+    emptyDesc: "Sizda yangi bildirishnomalar yo'q.",
+    time: {
+      now: "Hozirgina",
+      view: "Batafsil"
+    },
+    confirmClear: "Barcha bildirishnomalarni o'chirasizmi? Bu amalni qaytarib bo'lmaydi.",
+    newBadge: "YANGI"
+  },
+  en: {
+    title: "Inbox",
+    subtitle: "Your activity & updates",
+    dismiss: "Dismiss New",
+    emptyTitle: "All caught up!",
+    emptyDesc: "You have no new notifications.",
+    time: {
+      now: "Just now",
+      view: "View Details"
+    },
+    confirmClear: "Clear all notifications? This cannot be undone.",
+    newBadge: "NEW"
+  },
+  ru: {
+    title: "Входящие",
+    subtitle: "Активность и обновления",
+    dismiss: "Скрыть новые",
+    emptyTitle: "Все прочитано!",
+    emptyDesc: "У вас нет новых уведомлений.",
+    time: {
+      now: "Только что",
+      view: "Подробнее"
+    },
+    confirmClear: "Очистить все уведомления? Это действие нельзя отменить.",
+    newBadge: "НОВОЕ"
+  }
+};
 
 // --- TYPES ---
 interface Notification {
@@ -89,6 +133,10 @@ export default function NotificationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = NOTIF_TRANSLATIONS[lang];
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +152,6 @@ export default function NotificationsPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      // 🟢 FIX: Typed Mapping
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
       setNotifications(data);
       setLoading(false);
@@ -115,13 +162,10 @@ export default function NotificationsPage() {
 
   // 2. ACTIONS
   const handleRead = async (notification: Notification) => {
-    // If it has a link, go there
     if (notification.link) router.push(notification.link);
     
-    // Only update DB if it's unread
     if (!notification.read) {
       try {
-        // 🟢 FIX: Update 'read' status instead of deleting
         await updateDoc(doc(db, 'notifications', notification.id), { read: true });
       } catch (e) { 
         console.error("Error updating notification:", e); 
@@ -135,7 +179,6 @@ export default function NotificationsPage() {
 
     notifications.forEach(n => {
       if (!n.read) {
-        // 🟢 FIX: Batch Update instead of Batch Delete
         const ref = doc(db, 'notifications', n.id);
         batch.update(ref, { read: true });
         hasUpdates = true;
@@ -148,7 +191,7 @@ export default function NotificationsPage() {
   };
 
   const clearAll = async () => {
-    if (!confirm("Clear all notifications? This cannot be undone.")) return;
+    if (!confirm(t.confirmClear)) return;
     const batch = writeBatch(db);
     notifications.forEach(n => {
       batch.delete(doc(db, 'notifications', n.id));
@@ -156,7 +199,7 @@ export default function NotificationsPage() {
     await batch.commit();
   };
 
-  // 3. ICONS (Dark Mode Styled)
+  // 3. ICONS
   const getIcon = (type: string) => {
     const baseClass = "p-3 rounded-xl border backdrop-blur-md shadow-lg";
     switch (type) {
@@ -174,7 +217,7 @@ export default function NotificationsPage() {
   };
 
   const getTimeString = (timestamp: any) => {
-    if (!timestamp) return 'Just now';
+    if (!timestamp) return t.time.now;
     const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
@@ -215,10 +258,10 @@ export default function NotificationsPage() {
                <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white shadow-lg shadow-indigo-500/20">
                  <Inbox size={28} />
                </div>
-               Inbox
+               {t.title}
             </h1>
             <p className="text-slate-400 mt-2 font-medium text-lg ml-1">
-              Your activity & updates
+              {t.subtitle}
             </p>
           </div>
           
@@ -227,9 +270,9 @@ export default function NotificationsPage() {
                onClick={markAllRead} 
                disabled={!notifications.some(n => !n.read)}
                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold text-sm rounded-xl hover:bg-slate-700 hover:text-white hover:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-               title="Dismiss all new notifications"
+               title={t.dismiss}
              >
-               <Check size={16} /> Dismiss New
+               <Check size={16} /> {t.dismiss}
              </button>
              <button 
                onClick={clearAll} 
@@ -254,8 +297,8 @@ export default function NotificationsPage() {
                   <div className="w-20 h-20 bg-slate-700/50 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-600/50 shadow-inner">
                     <Sparkles size={32} />
                   </div>
-                  <h3 className="text-white font-bold text-xl mb-1">All caught up!</h3>
-                  <p className="text-slate-400">You have no new notifications.</p>
+                  <h3 className="text-white font-bold text-xl mb-1">{t.emptyTitle}</h3>
+                  <p className="text-slate-400">{t.emptyDesc}</p>
                </motion.div>
             ) : (
               notifications.map((n) => (
@@ -273,23 +316,20 @@ export default function NotificationsPage() {
                     }
                   `}
                 >
-                  {/* Hover Gradient */}
                   <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                   {/* "New" Badge */}
                   {!n.read && (
                     <span className="absolute top-4 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg shadow-indigo-500/30 tracking-wider">
-                      NEW
+                      {t.newBadge}
                     </span>
                   )}
 
                   <div className="flex items-start gap-5 relative z-10">
-                    {/* Icon */}
                     <div className="shrink-0 transition-transform group-hover:scale-110 duration-300">
                       {getIcon(n.type)}
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0 pt-0.5">
                        <div className="flex items-center gap-2 mb-1.5 pr-12">
                           <h3 className={`text-base md:text-lg leading-tight ${!n.read ? 'font-black text-white' : 'font-bold text-slate-300'}`}>
@@ -306,7 +346,7 @@ export default function NotificationsPage() {
                           </span>
                           {n.link && (
                             <span className="text-indigo-400 flex items-center gap-1 group-hover:text-indigo-300 transition-colors">
-                              View Details <Eye size={12}/>
+                              {t.time.view} <Eye size={12}/>
                             </span>
                           )}
                        </div>

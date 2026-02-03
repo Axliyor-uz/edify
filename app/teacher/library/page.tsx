@@ -4,14 +4,62 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
-import { FolderOpen, Archive, Loader2, Search } from 'lucide-react';
+import { FolderOpen, Archive, Loader2, Search, Library, Sparkles } from 'lucide-react';
 import TestCard from './_components/TestCard';
 import EditTestModal from './_components/EditTestModal';
-import PrintLauncher from '@/components/PrintLauncher';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const LIBRARY_TRANSLATIONS = {
+  uz: {
+    title: "Mening Kutubxonam",
+    subtitle: "Yaratilgan testlaringizni boshqaring va kuzatib boring.",
+    filters: {
+      active: "Faol Testlar",
+      archived: "Arxivlangan"
+    },
+    search: "Nom yoki kirish kodi bo'yicha qidirish...",
+    empty: {
+      title: "testlar topilmadi.",
+      desc: "Boshlash uchun yangi test yarating."
+    },
+    noFilter: "Hech qanday"
+  },
+  en: {
+    title: "My Library",
+    subtitle: "Manage and monitor your created assessments.",
+    filters: {
+      active: "Active Tests",
+      archived: "Archived"
+    },
+    search: "Search by Title or Access Code...",
+    empty: {
+      title: "tests found.",
+      desc: "Create a new test to get started."
+    },
+    noFilter: "No"
+  },
+  ru: {
+    title: "Моя Библиотека",
+    subtitle: "Управляйте и следите за созданными тестами.",
+    filters: {
+      active: "Активные",
+      archived: "Архив"
+    },
+    search: "Поиск по названию или коду...",
+    empty: {
+      title: "тестов не найдено.",
+      desc: "Создайте новый тест, чтобы начать."
+    },
+    noFilter: "Нет"
+  }
+};
 
 export default function LibraryPage() {
   const { user, loading } = useAuth();
-  
+  const { lang } = useTeacherLanguage();
+  const t = LIBRARY_TRANSLATIONS[lang];
+
   // State
   const [tests, setTests] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -59,70 +107,86 @@ export default function LibraryPage() {
 
   if (loading || isLoadingData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-indigo-500" size={32}/>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="animate-spin text-indigo-600" size={32}/>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50">
-      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 md:px-6 py-6 md:py-8">
-        
-        {/* 1. Header & Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-50/50 pb-20">
+      
+      {/* 1. HERO HEADER */}
+      <div className="bg-white border-b border-slate-200 pt-8 pb-12 px-6 md:px-10 relative overflow-hidden">
+        {/* Decorative Blobs */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-50 rounded-full translate-y-1/2 -translate-x-1/2 opacity-50"></div>
+
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900">My Library</h1>
-            <p className="text-sm md:text-base text-slate-600 mt-1">Manage and monitor your created assessments.</p>
+            <div className="flex items-center gap-2 text-indigo-600 font-bold mb-2 text-xs uppercase tracking-widest">
+               <Library size={16} /> {t.title}
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+              {t.title}
+            </h1>
+            <p className="text-slate-500 font-medium text-sm md:text-base max-w-lg">{t.subtitle}</p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border-2 border-slate-200 shadow-md w-full md:w-auto">
+          {/* TABS */}
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl">
              <button 
                onClick={() => setFilter('active')}
-               className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all duration-200 ${filter === 'active' ? 'bg-indigo-50 text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+               className={`px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${filter === 'active' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
              >
-               <FolderOpen size={16}/> 
-               <span className="hidden sm:inline">Active</span>
+               <FolderOpen size={18}/> 
+               <span>{t.filters.active}</span>
              </button>
              <button 
                onClick={() => setFilter('archived')}
-               className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all duration-200 ${filter === 'archived' ? 'bg-slate-100 text-slate-700 shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+               className={`px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${filter === 'archived' ? 'bg-white text-slate-800 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
              >
-               <Archive size={16}/> 
-               <span className="hidden sm:inline">Archived</span>
+               <Archive size={18}/> 
+               <span>{t.filters.archived}</span>
              </button>
           </div>
-          
         </div>
-        
+      </div>
 
-        {/* 2. Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+      <div className="max-w-6xl mx-auto px-4 md:px-6 -mt-6 space-y-8">
+        
+        {/* 2. SEARCH BAR */}
+        <div className="relative max-w-2xl mx-auto shadow-lg shadow-slate-200/50 rounded-2xl">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
             type="text" 
-            placeholder="Search by Title or Access Code..." 
-            className="w-full pl-12 pr-4 py-3 md:py-4 bg-white border-2 border-slate-200 rounded-2xl font-medium focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 outline-none transition-all shadow-md hover:shadow-lg text-sm md:text-base"
+            placeholder={t.search} 
+            className="w-full pl-14 pr-6 py-4 bg-white border-none rounded-2xl font-medium text-slate-700 placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* 3. Grid List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* 3. GRID LIST */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTests.length > 0 ? (
-            filteredTests.map((test) => (
-              <TestCard 
-                key={test.id} 
-                test={test} 
-                onManage={() => handleManage(test)} 
-              />
+            filteredTests.map((test, idx) => (
+              <div key={test.id} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'backwards' }}>
+                <TestCard 
+                  test={test} 
+                  onManage={() => handleManage(test)} 
+                />
+              </div>
             ))
           ) : (
-            <div className="col-span-full py-16 md:py-20 text-center flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 rounded-3xl bg-white/50 backdrop-blur-sm">
-              <FolderOpen size={48} className="mb-4 opacity-20" />
-              <p className="font-bold text-base md:text-lg">No {filter} tests found.</p>
-              <p className="text-xs md:text-sm mt-1">Create a new test to get started.</p>
+            <div className="col-span-full py-20 text-center flex flex-col items-center justify-center bg-white border border-slate-100 rounded-[2rem] shadow-sm">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                <Sparkles size={40} className="text-slate-300" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">
+                {t.noFilter} {t.filters[filter].toLowerCase()} {t.empty.title}
+              </h3>
+              <p className="text-slate-400 text-sm mt-1 max-w-xs mx-auto">{t.empty.desc}</p>
             </div>
           )}
         </div>
@@ -130,7 +194,7 @@ export default function LibraryPage() {
        {/* 4. Edit Modal */}
        {selectedTest && (
           <EditTestModal 
-            key={selectedTest.id} // 👈 THIS IS THE MAGIC FIX. Forces full reset.
+            key={selectedTest.id} 
             isOpen={isEditOpen} 
             onClose={() => setIsEditOpen(false)} 
             test={selectedTest} 

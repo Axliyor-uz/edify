@@ -11,8 +11,43 @@ import {
   ArrowRight 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useStudentLanguage } from '../layout'; // 🟢 Import Language Hook
 
-// Floating Particles Background
+// --- 1. TRANSLATION DICTIONARY ---
+const CLASSES_TRANSLATIONS = {
+  uz: {
+    title: "Mening Sinflarim",
+    subtitle: "Qoldirgan joydan davom eting.",
+    joinBtn: "Yangi Sinfga Qo'shilish",
+    emptyTitle: "Sinflar topilmadi",
+    emptyDesc: "Hali hech qanday sinfga yozilmagansiz. O'qituvchingizdan 6 xonali Qo'shilish Kodini so'rang!",
+    emptyAction: "Hozir qo'shilish",
+    students: "O'quvchilar",
+    noDesc: "Tavsif yo'q."
+  },
+  en: {
+    title: "My Classes",
+    subtitle: "Continue where you left off.",
+    joinBtn: "Join New Class",
+    emptyTitle: "No classes found",
+    emptyDesc: "You haven't enrolled in any classes yet. Ask your teacher for a 6-digit Join Code!",
+    emptyAction: "Join a class now",
+    students: "Students",
+    noDesc: "No description provided."
+  },
+  ru: {
+    title: "Мои Классы",
+    subtitle: "Продолжайте с того места, где остановились.",
+    joinBtn: "Вступить в Класс",
+    emptyTitle: "Классы не найдены",
+    emptyDesc: "Вы еще не записаны ни в один класс. Попросите у учителя 6-значный код присоединения!",
+    emptyAction: "Вступить сейчас",
+    students: "Учеников",
+    noDesc: "Описание отсутствует."
+  }
+};
+
+// Floating Particles Background (Unchanged)
 const FloatingParticles = () => {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -54,14 +89,12 @@ const FloatingParticles = () => {
   );
 };
 
-// 🟢 FIX: Define the interface for GlowingOrb props
 interface GlowingOrbProps {
   color: string;
   size: number;
   position: { x: string; y: string };
 }
 
-// 🟢 FIX: Apply the interface to the component
 const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => {
   return (
     <motion.div
@@ -87,7 +120,11 @@ const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => {
 
 export default function MyClassesPage() {
   const { user } = useAuth();
-  // 🟢 FIX: Define the type for the 'classes' state (array of any object for simplicity, or define a Class interface)
+  
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = CLASSES_TRANSLATIONS[lang];
+
   const [classes, setClasses] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -171,10 +208,10 @@ export default function MyClassesPage() {
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl text-white">
                 <GraduationCap size={28} />
               </div>
-              My Classes
+              {t.title}
             </h1>
             <p className="text-slate-400 mt-2 font-medium text-lg">
-              Continue where you left off.
+              {t.subtitle}
             </p>
           </div>
           
@@ -186,7 +223,7 @@ export default function MyClassesPage() {
             whileTap={{ scale: 0.98 }}
           >
             <span className="relative z-10 flex items-center gap-2">
-              <Plus size={18} strokeWidth={3} /> Join New Class
+              <Plus size={18} strokeWidth={3} /> {t.joinBtn}
             </span>
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
           </motion.button>
@@ -205,9 +242,9 @@ export default function MyClassesPage() {
               <div className="w-24 h-24 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-400 rounded-full flex items-center justify-center mb-6 shadow-inner border-2 border-blue-500/30">
                 <BookOpen size={48} />
               </div>
-              <h3 className="text-2xl font-black text-white mb-2">No classes found</h3>
+              <h3 className="text-2xl font-black text-white mb-2">{t.emptyTitle}</h3>
               <p className="text-slate-400 font-medium text-base mb-8 max-w-sm mx-auto leading-relaxed">
-                You haven't enrolled in any classes yet. Ask your teacher for a 6-digit Join Code!
+                {t.emptyDesc}
               </p>
               
               <motion.button 
@@ -216,7 +253,7 @@ export default function MyClassesPage() {
                 whileHover={{ x: 5 }}
                 whileTap={{ scale: 0.95 }}
               >
-                Join a class now <ArrowRight size={18} />
+                {t.emptyAction} <ArrowRight size={18} />
               </motion.button>
             </div>
           </motion.div>
@@ -252,14 +289,14 @@ export default function MyClassesPage() {
                       {cls.title}
                     </h3>
                     <p className="text-sm text-slate-400 font-medium line-clamp-2 leading-relaxed h-10 mb-2">
-                      {cls.description || 'No description provided.'}
+                      {cls.description || t.noDesc}
                     </p>
                   </div>
 
                   <div className="px-6 py-4 bg-slate-800/50 border-t border-slate-700/50 flex items-center justify-between mt-auto group-hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-400 group-hover:text-slate-300">
                       <Users size={14} />
-                      {cls.studentIds?.length || 0} Students
+                      {cls.studentIds?.length || 0} {t.students}
                     </div>
                     {cls.teacherName && (
                       <div className="flex items-center gap-2 text-xs font-bold text-slate-400 group-hover:text-blue-400 transition-colors">

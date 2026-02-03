@@ -7,9 +7,49 @@ import { useAuth } from '@/lib/AuthContext';
 import { Users, Plus, Loader2 } from 'lucide-react';
 import ClassCard from './_components/ClassCard';
 import CreateClassModal from './_components/CreateClassModal';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const CLASSES_TRANSLATIONS = {
+  uz: {
+    title: "Mening Sinflarim",
+    subtitle: "O'quvchilar, ro'yxatlar va so'rovlarni boshqaring.",
+    createBtn: "Yangi Sinf Yaratish",
+    empty: {
+      title: "Sinflar topilmadi.",
+      desc: "O'quvchilarni taklif qilish uchun birinchi sinfingizni yarating.",
+      btn: "Sinf Yaratish"
+    }
+  },
+  en: {
+    title: "My Classes",
+    subtitle: "Manage students, rosters, and join requests.",
+    createBtn: "Create New Class",
+    empty: {
+      title: "No classes found.",
+      desc: "Create your first class to invite students.",
+      btn: "Create Class"
+    }
+  },
+  ru: {
+    title: "Мои Классы",
+    subtitle: "Управление учениками, списками и запросами.",
+    createBtn: "Создать Класс",
+    empty: {
+      title: "Классы не найдены.",
+      desc: "Создайте свой первый класс, чтобы пригласить учеников.",
+      btn: "Создать Класс"
+    }
+  }
+};
 
 export default function ClassesPage() {
   const { user, loading } = useAuth();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = CLASSES_TRANSLATIONS[lang];
+
   const [classes, setClasses] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -47,15 +87,15 @@ export default function ClassesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900">My Classes</h1>
-            <p className="text-sm md:text-base text-slate-600 mt-1">Manage students, rosters, and join requests.</p>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900">{t.title}</h1>
+            <p className="text-sm md:text-base text-slate-600 mt-1">{t.subtitle}</p>
           </div>
           <button 
             onClick={() => setIsCreateOpen(true)}
             className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-indigo-200/50 transition-all active:scale-95 hover:shadow-xl hover:-translate-y-0.5 w-full sm:w-auto"
           >
             <Plus size={20} /> 
-            <span>Create New Class</span>
+            <span>{t.createBtn}</span>
           </button>
         </div>
 
@@ -70,13 +110,13 @@ export default function ClassesPage() {
               <div className="p-4 bg-indigo-50 rounded-full mb-4">
                 <Users size={48} className="text-indigo-200" />
               </div>
-              <p className="font-bold text-base md:text-lg text-slate-700">No classes found.</p>
-              <p className="text-xs md:text-sm mt-1 mb-6 text-slate-500">Create your first class to invite students.</p>
+              <p className="font-bold text-base md:text-lg text-slate-700">{t.empty.title}</p>
+              <p className="text-xs md:text-sm mt-1 mb-6 text-slate-500">{t.empty.desc}</p>
               <button 
                 onClick={() => setIsCreateOpen(true)}
                 className="text-sm font-bold text-indigo-600 bg-white border-2 border-indigo-200 px-6 py-2.5 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 flex items-center gap-2"
               >
-                <Plus size={16} /> Create Class
+                <Plus size={16} /> {t.empty.btn}
               </button>
             </div>
           )}

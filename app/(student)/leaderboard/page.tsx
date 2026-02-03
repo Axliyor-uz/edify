@@ -10,20 +10,80 @@ import {
   ChevronRight, Crown 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const LEADERBOARD_TRANSLATIONS = {
+  uz: {
+    title: "Reyting",
+    subtitle: "Eng yaxshi talabalar:",
+    filters: {
+      today: "Bugun",
+      week: "Hafta",
+      month: "Oy",
+      all: "Barcha Vaqt"
+    },
+    empty: {
+      title: "Chempionlar topilmadi",
+      desc: "Ushbu davr uchun hech kim topilmadi."
+    },
+    card: {
+      you: "Siz",
+      lvl: "Daraja",
+      xp: "XP Yig'ildi"
+    }
+  },
+  en: {
+    title: "Leaderboard",
+    subtitle: "Top students for",
+    filters: {
+      today: "Today",
+      week: "Week",
+      month: "Month",
+      all: "All Time"
+    },
+    empty: {
+      title: "No champions found",
+      desc: "No champions found for this period."
+    },
+    card: {
+      you: "You",
+      lvl: "Lvl",
+      xp: "XP Earned"
+    }
+  },
+  ru: {
+    title: "Рейтинг",
+    subtitle: "Лучшие студенты за",
+    filters: {
+      today: "Сегодня",
+      week: "Неделя",
+      month: "Месяц",
+      all: "Все Время"
+    },
+    empty: {
+      title: "Чемпионы не найдены",
+      desc: "За этот период чемпионов не найдено."
+    },
+    card: {
+      you: "Вы",
+      lvl: "Ур",
+      xp: "Получено XP"
+    }
+  }
+};
 
 // --- TYPE DEFINITIONS ---
 
-// 1. Interface for the User object in the Leaderboard
 interface LeaderboardUser {
   uid: string;
   displayName: string;
   totalXP: number;
   currentStreak: number;
   dailyHistory?: Record<string, number>;
-  score: number; // We calculate this dynamically based on the filter
+  score: number; 
 }
 
-// 2. Interface for GlowingOrb Props
 interface GlowingOrbProps {
   color: string;
   size: number;
@@ -71,7 +131,6 @@ const FloatingParticles = () => {
   );
 };
 
-// 🟢 FIX: Applied Interface
 const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   <motion.div
     className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
@@ -120,7 +179,10 @@ export default function LeaderboardPage() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   
-  // 🟢 FIX: Applied Typed State
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = LEADERBOARD_TRANSLATIONS[lang];
+
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('week');
@@ -132,7 +194,6 @@ export default function LeaderboardPage() {
         const q = query(collection(db, 'users'), orderBy('totalXP', 'desc'), limit(100));
         const snapshot = await getDocs(q);
         
-        // Map raw Firestore data to a temporary object structure
         const rawUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as any));
 
         const processed: LeaderboardUser[] = rawUsers.map((u: any) => {
@@ -165,7 +226,6 @@ export default function LeaderboardPage() {
     fetchData();
   }, [filter]);
 
-  // 🟢 FIX: Added type for targetUid
   const handleUserClick = (targetUid: string) => {
     if (targetUid === currentUser?.uid) {
         router.push('/profile'); 
@@ -174,7 +234,6 @@ export default function LeaderboardPage() {
     }
   };
 
-  // 🟢 FIX: Added type for rank
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={28} />;
     if (rank === 2) return <Medal className="text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.3)]" size={26} />;
@@ -213,16 +272,19 @@ export default function LeaderboardPage() {
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 relative z-10 pb-24">
         
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-8 md:pt-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-20 md:pt-4">
           <div>
             <h1 className="text-3xl font-black text-white flex items-center gap-3 tracking-tight">
               <div className="p-2.5 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
                 <Crown size={28} fill="currentColor" />
               </div>
-              Leaderboard
+              {t.title}
             </h1>
             <p className="text-slate-400 mt-2 font-medium text-lg">
-              Top students for <span className="text-blue-400 capitalize">{filter === 'all' ? 'All Time' : filter}</span>
+              {t.subtitle} <span className="text-blue-400 capitalize">
+                {/* @ts-ignore */}
+                {t.filters[filter]}
+              </span>
             </p>
           </div>
 
@@ -244,7 +306,8 @@ export default function LeaderboardPage() {
                     className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl"
                   />
                 )}
-                <span className="relative z-10 capitalize">{key === 'all' ? 'All Time' : key}</span>
+                {/* @ts-ignore */}
+                <span className="relative z-10 capitalize">{t.filters[key]}</span>
               </button>
             ))}
           </div>
@@ -258,7 +321,8 @@ export default function LeaderboardPage() {
               className="py-16 text-center bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-dashed border-slate-700"
             >
               <Trophy className="mx-auto text-slate-600 mb-4" size={48} />
-              <p className="text-slate-400 font-medium text-lg">No champions found for this period.</p>
+              <h3 className="text-xl font-bold text-white mb-2">{t.empty.title}</h3>
+              <p className="text-slate-400 font-medium">{t.empty.desc}</p>
             </motion.div>
           ) : (
             users.map((u, index) => {
@@ -308,7 +372,7 @@ export default function LeaderboardPage() {
                       </h3>
                       {isMe && (
                         <span className="text-[10px] font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm shadow-blue-500/40">
-                          You
+                          {t.card.you}
                         </span>
                       )}
                     </div>
@@ -316,7 +380,7 @@ export default function LeaderboardPage() {
                     <div className="flex items-center gap-3 text-xs md:text-sm font-medium text-slate-400">
                       <span className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
                         <Shield size={12} className="text-indigo-400"/> 
-                        Lvl {Math.floor(u.totalXP/100)+1}
+                        {t.card.lvl} {Math.floor(u.totalXP/100)+1}
                       </span>
                       {u.currentStreak > 0 && (
                         <span className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
@@ -332,7 +396,7 @@ export default function LeaderboardPage() {
                     <div className="font-black text-lg md:text-2xl text-white tracking-tight">
                       {u.score.toLocaleString()}
                     </div>
-                    <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">XP Earned</div>
+                    <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">{t.card.xp}</div>
                   </div>
 
                   {/* Arrow for interaction hint */}

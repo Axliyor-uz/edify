@@ -10,6 +10,134 @@ import {
   Edit2, CheckCircle, Zap, TrendingUp, Activity, Sparkles, Clock, School
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useStudentLanguage } from '../layout'; // 🟢 IMPORT FROM LAYOUT
+
+// --- 1. TRANSLATION DICTIONARY ---
+const DASHBOARD_TRANSLATIONS = {
+  uz: {
+    loading: "Talabalar markazi yuklanmoqda...",
+    hello: "Salom, {name}!",
+    subtitle: "Akademik panelingiz tayyor. Keling, o'rganamiz!",
+    buttons: {
+      history: "Natijalar",
+      classes: "Sinflarim",
+      startTest: "Testni Boshlash",
+      browse: "Sinflarni Ko'rish",
+      viewAll: "Barcha Sinflar",
+      cancel: "Bekor qilish"
+    },
+    stats: {
+      xp: "Jami XP",
+      streak: "Faol Seriya",
+      level: "Joriy Daraja",
+      goal: "Kunlik Maqsad",
+      days: "kun"
+    },
+    task: {
+      upcoming: "Yaqinlashayotgan Muddat",
+      caughtUp: "Hammasi bajarildi!",
+      defaultTitle: "Sinovga tayyormisiz?",
+      descPending: "Bu test sizning navbatdagi vazifangiz. Seriyani saqlab qolish va XP olish uchun uni bajaring.",
+      descEmpty: "Kutilayotgan vazifalar yo'q! Natijalarni yaxshilash uchun sinflarni ko'zdan kechiring."
+    },
+    activity: {
+      title: "Faollik Seriyasi",
+      today: "Bugun"
+    },
+    modal: {
+      title: "Kunlik Maqsadni Sozlash",
+      desc: "O'zingizga mos keladigan kunlik XP maqsadini tanlang!",
+      levels: {
+        Casual: "Oddiy",
+        Regular: "O'rtacha",
+        Serious: "Jiddiy",
+        Insane: "Dahshat"
+      }
+    }
+  },
+  en: {
+    loading: "Loading Student Hub...",
+    hello: "Hello, {name}!",
+    subtitle: "Your academic dashboard is ready. Let's learn!",
+    buttons: {
+      history: "Past Results",
+      classes: "My Classes",
+      startTest: "Start Test Now",
+      browse: "Browse Classes",
+      viewAll: "View All Classes",
+      cancel: "Cancel"
+    },
+    stats: {
+      xp: "Total XP Earned",
+      streak: "Active Streak",
+      level: "Current Level",
+      goal: "Daily Goal",
+      days: "days"
+    },
+    task: {
+      upcoming: "Upcoming Deadline",
+      caughtUp: "You're All Caught Up!",
+      defaultTitle: "Ready for a Challenge?",
+      descPending: "This test is your next priority. Complete it to keep your streak alive and earn XP.",
+      descEmpty: "No pending assignments! Browse your classes to review or improve your scores."
+    },
+    activity: {
+      title: "Activity Streak",
+      today: "Today"
+    },
+    modal: {
+      title: "Set Daily Goal",
+      desc: "Choose a daily XP target that challenges you!",
+      levels: {
+        Casual: "Casual",
+        Regular: "Regular",
+        Serious: "Serious",
+        Insane: "Insane"
+      }
+    }
+  },
+  ru: {
+    loading: "Загрузка центра...",
+    hello: "Привет, {name}!",
+    subtitle: "Ваша панель готова. Давайте учиться!",
+    buttons: {
+      history: "История",
+      classes: "Мои Классы",
+      startTest: "Начать Тест",
+      browse: "Обзор Классов",
+      viewAll: "Все Классы",
+      cancel: "Отмена"
+    },
+    stats: {
+      xp: "Всего XP",
+      streak: "Серия",
+      level: "Текущий Уровень",
+      goal: "Цель Дня",
+      days: "дн."
+    },
+    task: {
+      upcoming: "Срок сдачи",
+      caughtUp: "Все выполнено!",
+      defaultTitle: "Готовы к вызову?",
+      descPending: "Этот тест - ваш приоритет. Выполните его, чтобы сохранить серию и получить XP.",
+      descEmpty: "Нет активных заданий! Просмотрите классы, чтобы улучшить свои результаты."
+    },
+    activity: {
+      title: "Активность",
+      today: "Сегодня"
+    },
+    modal: {
+      title: "Цель Дня",
+      desc: "Выберите цель XP, которая бросит вам вызов!",
+      levels: {
+        Casual: "Легкий",
+        Regular: "Обычный",
+        Serious: "Серьезный",
+        Insane: "Безумный"
+      }
+    }
+  }
+};
 
 // --- TYPES ---
 interface UserProfile {
@@ -28,7 +156,7 @@ interface UpcomingTask {
   dueAt: any;
 }
 
-// Floating Particles Background (same as Classes page)
+// Floating Particles Background (Unchanged)
 const FloatingParticles = () => {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -70,7 +198,7 @@ const FloatingParticles = () => {
   );
 };
 
-// Glowing Orb (same as Classes page)
+// Glowing Orb (Unchanged)
 const GlowingOrb = ({ color, size, position }: { color: string; size: number; position: { x: string; y: string } }) => {
   return (
     <motion.div
@@ -97,6 +225,10 @@ const GlowingOrb = ({ color, size, position }: { color: string; size: number; po
 export default function StudentDashboard() {
   const { user } = useAuth();
   
+  // 🟢 USE HOOK FROM LAYOUT
+  const { lang } = useStudentLanguage();
+  const t = DASHBOARD_TRANSLATIONS[lang];
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [nextTask, setNextTask] = useState<UpcomingTask | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,7 +331,7 @@ export default function StudentDashboard() {
         <FloatingParticles />
         <div className="text-center relative z-10">
           <div className="w-20 h-20 border-4 border-slate-700 border-t-blue-500 rounded-full mx-auto animate-spin"></div>
-          <p className="mt-6 text-slate-300 font-bold text-lg">Loading Student Hub...</p>
+          <p className="mt-6 text-slate-300 font-bold text-lg">{t.loading}</p>
         </div>
       </div>
     );
@@ -224,13 +356,13 @@ export default function StudentDashboard() {
         >
           <div className="space-y-2 pt-[40px] md:pt-0">
             <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight">
-              Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+              {t.hello.replace("{name}", "")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
                 {profile?.displayName}
               </span>! 👋
             </h1>
             <p className="text-slate-400 font-semibold flex items-center gap-2 text-lg">
               <Activity size={20} className="text-blue-400" />
-              Your academic dashboard is ready. Let's learn!
+              {t.subtitle}
             </p>
           </div>
           <div className="flex gap-3">
@@ -239,7 +371,7 @@ export default function StudentDashboard() {
                 href="/history" 
                 className="px-6 py-3 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 text-slate-300 font-bold rounded-xl hover:bg-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-700/50 transition-all"
               >
-                Past Results
+                {t.buttons.history}
               </Link>
             </motion.button>
             <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
@@ -247,7 +379,7 @@ export default function StudentDashboard() {
                 href="/classes" 
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/40 hover:shadow-2xl transition-all flex items-center gap-2"
               >
-                <School size={20} /> My Classes
+                <School size={20} /> {t.buttons.classes}
               </Link>
             </motion.button>
           </div>
@@ -261,10 +393,10 @@ export default function StudentDashboard() {
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           {[
-            { icon: <Trophy size={28} />, value: (profile?.totalXP || 0).toLocaleString(), label: "Total XP Earned", color: "blue" },
-            { icon: <Flame size={28} />, value: `${profile?.currentStreak || 0} days`, label: "Active Streak", color: "orange" },
-            { icon: <Star size={28} />, value: `Level ${currentLevel}`, label: "Current Level", color: "purple", sub: `${xpProgress}/${xpForNextLevel} XP` },
-            { icon: <Target size={20} />, value: `${todayXP} / ${dailyGoal} XP`, label: "Daily Goal", color: "blue", progress: progressPercent }
+            { icon: <Trophy size={28} />, value: (profile?.totalXP || 0).toLocaleString(), label: t.stats.xp, color: "blue" },
+            { icon: <Flame size={28} />, value: `${profile?.currentStreak || 0} ${t.stats.days}`, label: t.stats.streak, color: "orange" },
+            { icon: <Star size={28} />, value: `${t.stats.level.split(' ')[1] || 'Level'} ${currentLevel}`, label: t.stats.level, color: "purple", sub: `${xpProgress}/${xpForNextLevel} XP` },
+            { icon: <Target size={20} />, value: `${todayXP} / ${dailyGoal} XP`, label: t.stats.goal, color: "blue", progress: progressPercent }
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -312,17 +444,17 @@ export default function StudentDashboard() {
             <div className="relative z-10">
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-full text-xs font-bold mb-5">
                 {nextTask ? <Clock size={14} /> : <Sparkles size={14} />} 
-                {nextTask ? "Upcoming Deadline" : "You're All Caught Up!"}
+                {nextTask ? t.task.upcoming : t.task.caughtUp}
               </div>
               
               <h2 className="text-3xl font-black text-white mb-3">
-                {nextTask ? nextTask.title : "Ready for a Challenge?"}
+                {nextTask ? nextTask.title : t.task.defaultTitle}
               </h2>
               
               <p className="text-slate-400 mb-6 max-w-lg text-lg">
                 {nextTask 
-                  ? "This test is your next priority. Complete it to keep your streak alive and earn XP."
-                  : "No pending assignments! Browse your classes to review or improve your scores."
+                  ? t.task.descPending
+                  : t.task.descEmpty
                 }
               </p>
               
@@ -332,7 +464,7 @@ export default function StudentDashboard() {
                     href={nextTask ? `/classes/${nextTask.classId}/test/${nextTask.assignmentId}` : "/classes"}
                     className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl flex items-center gap-2"
                   >
-                    {nextTask ? "Start Test Now" : "Browse Classes"} <ArrowRight size={20} />
+                    {nextTask ? t.buttons.startTest : t.buttons.browse} <ArrowRight size={20} />
                   </Link>
                 </motion.button>
                 
@@ -341,7 +473,7 @@ export default function StudentDashboard() {
                     href="/classes"
                     className="px-8 py-4 bg-slate-700/50 border-2 border-slate-600 text-slate-300 font-bold rounded-xl hover:bg-slate-700 hover:border-slate-500 flex items-center gap-2"
                   >
-                    <School size={20} /> View All Classes
+                    <School size={20} /> {t.buttons.viewAll}
                   </Link>
                 </motion.button>
               </div>
@@ -354,7 +486,7 @@ export default function StudentDashboard() {
             whileHover={{ y: -5 }}
           >
             <h3 className="font-black text-white mb-5 flex items-center gap-2 text-lg">
-              <Activity size={20} className="text-orange-400" /> Activity Streak
+              <Activity size={20} className="text-orange-400" /> {t.activity.title}
             </h3>
             
             <div className="flex gap-1.5 h-28 items-end justify-between">
@@ -374,7 +506,7 @@ export default function StudentDashboard() {
                       }`}
                       style={{ height: `${height}%` }}
                     />
-                    {isToday && <span className="text-[10px] text-blue-400 font-bold">Today</span>}
+                    {isToday && <span className="text-[10px] text-blue-400 font-bold">{t.activity.today}</span>}
                   </div>
                 );
               })}
@@ -397,8 +529,8 @@ export default function StudentDashboard() {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
               >
-                <h3 className="text-2xl font-black text-white mb-2">Set Daily Goal</h3>
-                <p className="text-slate-400 mb-6">Choose a daily XP target that challenges you!</p>
+                <h3 className="text-2xl font-black text-white mb-2">{t.modal.title}</h3>
+                <p className="text-slate-400 mb-6">{t.modal.desc}</p>
                 
                 {[
                   { xp: 50, label: 'Casual', emoji: '😌' },
@@ -422,7 +554,10 @@ export default function StudentDashboard() {
                         <span className="text-2xl">{emoji}</span>
                         <div>
                           <div className="font-black text-white">{xp} XP</div>
-                          <div className="text-sm text-slate-400">{label}</div>
+                          <div className="text-sm text-slate-400">
+                            {/* 🟢 Translate Label */}
+                            {t.modal.levels[label as keyof typeof t.modal.levels]}
+                          </div>
                         </div>
                       </div>
                       {newGoal === xp && <CheckCircle className="text-blue-400" size={20} />}
@@ -434,7 +569,7 @@ export default function StudentDashboard() {
                   onClick={() => setIsEditingGoal(false)} 
                   className="w-full mt-4 py-3 text-slate-400 font-bold rounded-xl"
                 >
-                  Cancel
+                  {t.buttons.cancel}
                 </button>
               </motion.div>
             </motion.div>

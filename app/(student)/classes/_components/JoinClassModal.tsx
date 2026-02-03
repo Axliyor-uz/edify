@@ -6,8 +6,57 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'fire
 import { useAuth } from '@/lib/AuthContext';
 import { Hash, Loader2, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-// 👇 1. IMPORT NOTIFICATION SERVICE
 import { sendNotification } from '@/services/notificationService';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Language Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const JOIN_TRANSLATIONS = {
+  uz: {
+    title: "Sinfga Qo'shilish",
+    subtitle: "O'qituvchingizdan olingan 6 xonali kodni kiriting.",
+    placeholder: "M: A1B2C3",
+    btnSend: "So'rov Yuborish",
+    successTitle: "So'rov Yuborildi!",
+    successDesc: "O'qituvchi tasdiqlashini kuting.",
+    toasts: {
+      invalid: "Noto'g'ri Sinf Kodi",
+      joined: "Siz allaqachon bu sinfdasiz!",
+      pending: "So'rov allaqachon yuborilgan.",
+      success: "So'rov muvaffaqiyatli yuborildi!",
+      error: "Xatolik yuz berdi"
+    }
+  },
+  en: {
+    title: "Join a Class",
+    subtitle: "Enter the 6-character code from your teacher.",
+    placeholder: "Ex: A1B2C3",
+    btnSend: "Send Request",
+    successTitle: "Request Sent!",
+    successDesc: "Please wait for teacher approval.",
+    toasts: {
+      invalid: "Invalid Class Code",
+      joined: "You are already in this class!",
+      pending: "Request already pending.",
+      success: "Request sent successfully!",
+      error: "Something went wrong"
+    }
+  },
+  ru: {
+    title: "Вступить в Класс",
+    subtitle: "Введите 6-значный код, полученный от учителя.",
+    placeholder: "Напр: A1B2C3",
+    btnSend: "Отправить Запрос",
+    successTitle: "Запрос Отправлен!",
+    successDesc: "Пожалуйста, ожидайте подтверждения учителя.",
+    toasts: {
+      invalid: "Неверный код класса",
+      joined: "Вы уже в этом классе!",
+      pending: "Запрос уже отправлен.",
+      success: "Запрос успешно отправлен!",
+      error: "Что-то пошло не так"
+    }
+  }
+};
 
 interface Props {
   isOpen: boolean;
@@ -16,6 +65,11 @@ interface Props {
 
 export default function JoinClassModal({ isOpen, onClose }: Props) {
   const { user } = useAuth();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = JOIN_TRANSLATIONS[lang];
+
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success'>('idle');
@@ -34,7 +88,7 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        toast.error("Invalid Class Code");
+        toast.error(t.toasts.invalid);
         setLoading(false);
         return;
       }
@@ -45,7 +99,7 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
 
       // 2. Check if already joined
       if (classData.studentIds?.includes(user.uid)) {
-        toast.error("You are already in this class!");
+        toast.error(t.toasts.joined);
         setLoading(false);
         return;
       }
@@ -58,7 +112,7 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
       const requestSnap = await getDocs(requestQ);
       
       if (!requestSnap.empty) {
-        toast("Request already pending.", { icon: '⏳' });
+        toast(t.toasts.pending, { icon: '⏳' });
         setLoading(false);
         return;
       }
@@ -72,20 +126,19 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
         createdAt: serverTimestamp()
       });
 
-      // 🔔 5. NEW: SEND NOTIFICATION TO TEACHER
-      // We check if teacherId exists to be safe
+      // 5. SEND NOTIFICATION TO TEACHER
       if (classData.teacherId) {
         await sendNotification(
           classData.teacherId, 
           'request', 
           'New Join Request', 
           `${user.displayName || 'A student'} wants to join ${classData.title}`, 
-          `/teacher/classes/${classId}` // Link takes teacher to the class
+          `/teacher/classes/${classId}` 
         );
       }
 
       setStatus('success');
-      toast.success("Request sent successfully!");
+      toast.success(t.toasts.success);
       
       // Close automatically after 2 seconds
       setTimeout(() => {
@@ -94,7 +147,7 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
 
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(t.toasts.error);
       setLoading(false);
     }
   };
@@ -129,21 +182,21 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
           <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
             <Hash size={28} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900">Join a Class</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Enter the 6-character code from your teacher.</p>
+          <h2 className="text-2xl font-black text-slate-900">{t.title}</h2>
+          <p className="text-slate-500 text-sm font-medium mt-1">{t.subtitle}</p>
         </div>
 
         {status === 'success' ? (
           <div className="bg-green-50 border border-green-100 rounded-2xl p-6 text-center animate-in zoom-in">
             <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-green-800">Request Sent!</h3>
-            <p className="text-green-600 text-sm mt-1">Please wait for teacher approval.</p>
+            <h3 className="text-lg font-bold text-green-800">{t.successTitle}</h3>
+            <p className="text-green-600 text-sm mt-1">{t.successDesc}</p>
           </div>
         ) : (
           <form onSubmit={handleJoin} className="space-y-4">
             <input
               type="text"
-              placeholder="Ex: A1B2C3"
+              placeholder={t.placeholder}
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               maxLength={6}
@@ -156,7 +209,7 @@ export default function JoinClassModal({ isOpen, onClose }: Props) {
               disabled={loading || code.length < 3}
               className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-200 active:scale-95 flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="animate-spin" /> : 'Send Request'}
+              {loading ? <Loader2 className="animate-spin" /> : t.btnSend}
             </button>
           </form>
         )}

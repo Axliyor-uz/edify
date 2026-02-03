@@ -15,29 +15,186 @@ import {
   Mail,
   LogOut,
   Award,
-  Flame,
-  Trophy,
-  Calendar,
-  Edit2,
-  X,
-  RefreshCw,
-  MapPin,
-  School,
-  Quote,
-  Briefcase,
-  Menu,
-  Info,
-  Globe,
-  Send,
-  Github,
-  Linkedin,
-  Phone,
+  Flame,  Trophy,  Calendar,  Edit2,  X,  RefreshCw,
+  MapPin,  School,  Quote,  Briefcase,  Menu,  Info,  Phone,  Send,  Github,Linkedin
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-
 import EditProfileModal from "./_components/EditProfileModal";
+import { useStudentLanguage } from "@/app/(student)/layout"; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const PROFILE_TRANSLATIONS = {
+  uz: {
+    loading: "Profil yuklanmoqda...",
+    role: { student: "O'quvchi", teacher: "O'qituvchi" },
+    buttons: {
+      edit: "Profilni Tahrirlash",
+      support: "Yordam",
+      logout: "Chiqish",
+      dashboard: "Boshqaruv",
+      classes: "Sinflarim",
+      leaderboard: "Reyting",
+      history: "Tarix",
+      profile: "Profil"
+    },
+    info: {
+      title: "Shaxsiy Ma'lumotlar",
+      email: "Email Manzili",
+      birth: "Tug'ilgan Sana",
+      location: "Joylashuv",
+      education: "Ta'lim",
+      notProvided: "Kiritilmagan",
+      gradePrefix: "Sinf",
+      yearPrefix: "Kurs"
+    },
+    stats: {
+      xp: "Jami XP",
+      streak: "Kunlik Seriya",
+      level: "Joriy Daraja"
+    },
+    activity: {
+      title: "Faollik Tarixi",
+      daysActive: "Kun Faol",
+      less: "Kamroq",
+      more: "Ko'proq",
+      mon: "Dush",
+      wed: "Chor",
+      fri: "Juma"
+    },
+    about: {
+      title: "EdifyPlatform",
+      subtitle: "AI yordamida ta'limni kuchaytirish",
+      supportHeader: "Yordam va Aloqa",
+      telegram: "Telegram Yordam",
+      callCenter: "Aloqa Markazi",
+      email: "Email Manzili",
+      devHeader: "Dasturchi",
+      innovating: "Ta'lim texnologiyalarini rivojlantirish",
+      rights: "Barcha huquqlar himoyalangan.",
+      system: "Tizim Ishlamoqda"
+    },
+    toasts: {
+      updateSuccess: "Profil muvaffaqiyatli yangilandi!",
+      updateFail: "Profilni yangilashda xatolik",
+      passSuccess: "Parol yangilandi!",
+      passFail: "Xatolik. Joriy parolni tekshiring."
+    }
+  },
+  en: {
+    loading: "Loading Profile...",
+    role: { student: "Student", teacher: "Instructor" },
+    buttons: {
+      edit: "Edit Profile",
+      support: "Support",
+      logout: "Sign Out",
+      dashboard: "Dashboard",
+      classes: "My Classes",
+      leaderboard: "Leaderboard",
+      history: "History",
+      profile: "Profile"
+    },
+    info: {
+      title: "Personal Info",
+      email: "Email Address",
+      birth: "Birth Date",
+      location: "Location",
+      education: "Education",
+      notProvided: "Not provided",
+      gradePrefix: "Grade",
+      yearPrefix: "Year"
+    },
+    stats: {
+      xp: "Total XP",
+      streak: "Day Streak",
+      level: "Current Level"
+    },
+    activity: {
+      title: "Activity Log",
+      daysActive: "Days Active",
+      less: "Less",
+      more: "More",
+      mon: "Mon",
+      wed: "Wed",
+      fri: "Fri"
+    },
+    about: {
+      title: "EdifyPlatform",
+      subtitle: "Empowering Education with AI",
+      supportHeader: "Support & Contact",
+      telegram: "Telegram Support",
+      callCenter: "Call Center",
+      email: "Email Address",
+      devHeader: "Developed By",
+      innovating: "Innovating Education Technology",
+      rights: "All rights reserved.",
+      system: "System Operational"
+    },
+    toasts: {
+      updateSuccess: "Profile updated successfully!",
+      updateFail: "Failed to update profile",
+      passSuccess: "Password updated!",
+      passFail: "Failed. Check current password."
+    }
+  },
+  ru: {
+    loading: "Загрузка профиля...",
+    role: { student: "Ученик", teacher: "Преподаватель" },
+    buttons: {
+      edit: "Редактировать",
+      support: "Поддержка",
+      logout: "Выйти",
+      dashboard: "Главная",
+      classes: "Мои Классы",
+      leaderboard: "Рейтинг",
+      history: "История",
+      profile: "Профиль"
+    },
+    info: {
+      title: "Личная Информация",
+      email: "Эл. почта",
+      birth: "Дата Рождения",
+      location: "Местоположение",
+      education: "Образование",
+      notProvided: "Не указано",
+      gradePrefix: "Класс",
+      yearPrefix: "Курс"
+    },
+    stats: {
+      xp: "Всего XP",
+      streak: "Серия Дней",
+      level: "Текущий Уровень"
+    },
+    activity: {
+      title: "История Активности",
+      daysActive: "Дней Активности",
+      less: "Меньше",
+      more: "Больше",
+      mon: "Пн",
+      wed: "Ср",
+      fri: "Пт"
+    },
+    about: {
+      title: "EdifyPlatform",
+      subtitle: "Улучшение образования с ИИ",
+      supportHeader: "Поддержка и Контакты",
+      telegram: "Telegram Поддержка",
+      callCenter: "Колл-центр",
+      email: "Эл. почта",
+      devHeader: "Разработчик",
+      innovating: "Инновации в образовании",
+      rights: "Все права защищены.",
+      system: "Система работает"
+    },
+    toasts: {
+      updateSuccess: "Профиль успешно обновлен!",
+      updateFail: "Ошибка обновления профиля",
+      passSuccess: "Пароль обновлен!",
+      passFail: "Ошибка. Проверьте текущий пароль."
+    }
+  }
+};
 
 // --- VISUAL COMPONENTS (Backgrounds & Nav) ---
 const FloatingParticles = () => {
@@ -107,7 +264,7 @@ const GlowingOrb = ({
   />
 );
 
-const MobileNavBar = ({ onMenuClick }: { onMenuClick: () => void }) => (
+const MobileNavBar = ({ onMenuClick, title }: { onMenuClick: () => void, title: string }) => (
   <div className="fixed top-0 left-0 right-0 h-16 bg-slate-900 z-40 flex items-center justify-between px-4 border-b border-slate-800 md:hidden">
     <div className="flex items-center gap-3">
       <button
@@ -116,22 +273,23 @@ const MobileNavBar = ({ onMenuClick }: { onMenuClick: () => void }) => (
       >
         <Menu size={24} />
       </button>
-      <h1 className="text-lg font-black text-white tracking-tight">Profile</h1>
+      <h1 className="text-lg font-black text-white tracking-tight">{title}</h1>
     </div>
   </div>
 );
 
-// --- ABOUT / SUPPORT MODAL COMPONENT (Premium Version) ---
+// --- ABOUT / SUPPORT MODAL COMPONENT ---
 const AboutModal = ({
   isOpen,
   onClose,
+  t
 }: {
   isOpen: boolean;
   onClose: () => void;
+  t: any;
 }) => {
   if (!isOpen) return null;
 
-  // Contact Item Component for cleaner code
   const ContactCard = ({
     icon,
     title,
@@ -179,7 +337,6 @@ const AboutModal = ({
       onClick={onClose}
     >
       <motion.div
-        // 🟢 Increased size to max-w-2xl for better PC view, w-full for mobile
         className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
@@ -188,7 +345,6 @@ const AboutModal = ({
       >
         {/* PREMIUM HEADER */}
         <div className="relative h-40 bg-slate-900 overflow-hidden shrink-0">
-          {/* Abstract Background Shapes */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2 animate-blob"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/2 animate-blob animation-delay-2000"></div>
 
@@ -207,7 +363,7 @@ const AboutModal = ({
               Edify<span className="text-indigo-400">Platform</span>
             </h2>
             <p className="text-slate-400 text-xs font-medium mt-1">
-              Empowering Education with AI
+              {t.subtitle}
             </p>
           </div>
         </div>
@@ -215,48 +371,43 @@ const AboutModal = ({
         {/* SCROLLABLE CONTENT */}
         <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* SECTION 1: SUPPORT */}
             <div className="space-y-4">
               <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                 <span className="w-1 h-4 bg-indigo-500 rounded-full"></span>{" "}
-                Support & Contact
+                {t.supportHeader}
               </h3>
 
-              {/* Telegram Card */}
               <ContactCard
                 href="https://t.me/U_m_i_d_j_o_n_006"
                 colorClass="from-blue-400 to-blue-600"
-                title="Telegram Support"
+                title={t.telegram}
                 value="@U_m_i_d_j_o_n_006"
-                icon={
-                  <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                  </svg>
-                }
+                icon={<Send size={20} />} 
               />
 
               {/* Phone Card */}
               <ContactCard
+                href="tel:+998338602006" // 🟢 Trigger Phone Call
                 colorClass="from-emerald-400 to-emerald-600"
-                title="Call Center"
+                title={t.callCenter}
                 value="+998 33 860 20 06"
                 icon={<Phone size={24} />}
               />
 
-              {/* Email Card (New) */}
+              {/* Email Card */}
               <ContactCard
+                href="mailto:u.jumaqulov@newuu.uz" // 🟢 Trigger Email App
                 colorClass="from-orange-400 to-orange-600"
-                title="Email Address"
+                title={t.email}
                 value="u.jumaqulov@newuu.uz"
                 icon={<Mail size={24} />}
               />
             </div>
 
-            {/* SECTION 2: DEVELOPER INFO */}
             <div className="space-y-4">
               <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                 <span className="w-1 h-4 bg-purple-500 rounded-full"></span>{" "}
-                Developed By
+                {t.devHeader}
               </h3>
 
               <div className="p-5 rounded-2xl bg-slate-900 text-white relative overflow-hidden group">
@@ -265,44 +416,30 @@ const AboutModal = ({
                 </div>
                 <h4 className="text-lg font-bold mb-1">WASP-2 AI Solutions</h4>
                 <p className="text-slate-400 text-xs mb-4">
-                  Innovating Education Technology
+                  {t.innovating}
                 </p>
 
                 <div className="space-y-3">
-                  {/* GitHub */}
                   <a
                     href="https://github.com/Wasp-2-AI"
                     target="_blank"
                     className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                   >
                     <div className="bg-white text-slate-900 p-1.5 rounded-full">
-                      <svg
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                      </svg>
+                      <Github size={16} />
                     </div>
                     <span className="text-xs font-bold">
                       github.com/wasp-2-ai
                     </span>
                   </a>
 
-                  {/* LinkedIn */}
                   <a
                     href="https://www.linkedin.com/company/wasp-2-ai"
                     target="_blank"
                     className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                   >
                     <div className="bg-[#0077b5] text-white p-1.5 rounded-full">
-                      <svg
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                      </svg>
+                      <Linkedin size={16} />
                     </div>
                     <span className="text-xs font-bold">
                       WASP-2 AI Solutions
@@ -313,10 +450,9 @@ const AboutModal = ({
             </div>
           </div>
 
-          {/* VERSION FOOTER */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-2 text-center md:text-left">
             <p className="text-[10px] font-bold text-slate-400">
-              © 2026 WASP-2 AI Solutions. All rights reserved.
+              © 2026 WASP-2 AI Solutions. {t.rights}
             </p>
             <div className="flex items-center gap-2">
               <span className="px-2 py-1 rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 border border-slate-200">
@@ -324,7 +460,7 @@ const AboutModal = ({
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-[10px] font-bold text-emerald-600">
-                System Operational
+                {t.system}
               </span>
             </div>
           </div>
@@ -379,7 +515,7 @@ interface UserData {
   role?: string;
   location?: { country: string; region: string; district: string };
   education?: { institution: string; grade: string };
-  birthDate?: string; // Added field
+  birthDate?: string; 
   totalXP: number;
   currentStreak: number;
   level: number;
@@ -395,9 +531,13 @@ export default function ProfilePage() {
   const heatmapScrollRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isAboutOpen, setIsAboutOpen] = useState(false); // 🟢 New State for About Modal
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});
+
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = PROFILE_TRANSLATIONS[lang];
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (u) => {
@@ -421,7 +561,7 @@ export default function ProfilePage() {
             district: data.location?.district || "",
             institution: data.education?.institution || "",
             grade: data.education?.grade || "",
-            birthDate: data.birthDate || "", // 🟢 Populating Birth Date
+            birthDate: data.birthDate || "",
           });
         }
       } catch (e) {
@@ -468,7 +608,7 @@ export default function ProfilePage() {
           institution: updatedData.institution,
           grade: updatedData.grade,
         },
-        birthDate: updatedData.birthDate, // 🟢 Saving Birth Date
+        birthDate: updatedData.birthDate,
       };
 
       if (updatedData.username !== userData?.username) {
@@ -493,11 +633,11 @@ export default function ProfilePage() {
       await batch.commit();
       setUserData({ ...userData!, ...updates });
       setFormData(updatedData);
-      toast.success("Profile updated successfully!");
+      toast.success(t.toasts.updateSuccess);
       setIsEditing(false);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to update profile");
+      toast.error(t.toasts.updateFail);
     } finally {
       setSaving(false);
     }
@@ -509,9 +649,9 @@ export default function ProfilePage() {
       const cred = EmailAuthProvider.credential(user.email, current);
       await reauthenticateWithCredential(user, cred);
       await updatePassword(user, newP);
-      toast.success("Password updated!");
+      toast.success(t.toasts.passSuccess);
     } catch (e) {
-      toast.error("Failed. Check current password.");
+      toast.error(t.toasts.passFail);
     }
   };
 
@@ -524,7 +664,7 @@ export default function ProfilePage() {
             className="animate-spin text-blue-400 mx-auto mb-4"
             size={32}
           />
-          <p className="text-blue-400 font-bold">Loading Profile...</p>
+          <p className="text-blue-400 font-bold">{t.loading}</p>
         </div>
       </div>
     );
@@ -557,7 +697,7 @@ export default function ProfilePage() {
         position={{ x: "70%", y: "80%" }}
       />
 
-      <MobileNavBar onMenuClick={() => setIsMobileMenuOpen(true)} />
+      <MobileNavBar onMenuClick={() => setIsMobileMenuOpen(true)} title={t.buttons.profile} />
 
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -579,35 +719,35 @@ export default function ProfilePage() {
                 className="block text-lg font-bold text-white py-3 px-4 bg-slate-800 rounded-xl"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Dashboard
+                {t.buttons.dashboard}
               </Link>
               <Link
                 href="/classes"
                 className="block text-lg font-bold text-white py-3 px-4 bg-slate-800 rounded-xl"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                My Classes
+                {t.buttons.classes}
               </Link>
               <Link
                 href="/leaderboard"
                 className="block text-lg font-bold text-white py-3 px-4 bg-slate-800 rounded-xl"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Leaderboard
+                {t.buttons.leaderboard}
               </Link>
               <Link
                 href="/history"
                 className="block text-lg font-bold text-white py-3 px-4 bg-slate-800 rounded-xl"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                History
+                {t.buttons.history}
               </Link>
               <Link
                 href="/profile"
                 className="block text-lg font-bold text-white py-3 px-4 bg-indigo-600 rounded-xl"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Profile
+                {t.buttons.profile}
               </Link>
             </div>
           </motion.div>
@@ -650,7 +790,7 @@ export default function ProfilePage() {
                       {userData.displayName}
                       {userData.role === "teacher" && (
                         <span className="text-[10px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                          TEACHER
+                          {t.role.teacher}
                         </span>
                       )}
                     </h1>
@@ -659,7 +799,7 @@ export default function ProfilePage() {
                       <div className="w-1 h-1 bg-slate-500 rounded-full"></div>
                       <span className="flex items-center gap-1.5 text-slate-300">
                         <Briefcase size={14} className="text-indigo-400" />{" "}
-                        {userData.role === "teacher" ? "Instructor" : "Student"}
+                        {userData.role === "teacher" ? t.role.teacher : t.role.student}
                       </span>
                       <div className="w-1 h-1 bg-slate-500 rounded-full"></div>
                       <span className="flex items-center gap-1.5 text-slate-300">
@@ -677,24 +817,24 @@ export default function ProfilePage() {
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <Edit2 size={16} /> Edit Profile
+                      <Edit2 size={16} /> {t.buttons.edit}
                     </motion.button>
 
-                    {/* Support Button (Styled like Edit) */}
+                    {/* Support Button */}
                     <motion.button
                       onClick={() => setIsAboutOpen(true)}
                       className="flex-1 md:flex-none px-4 py-2 bg-slate-800 border border-slate-600 text-white font-bold rounded-xl text-sm hover:bg-slate-700 hover:text-indigo-400 transition-colors flex items-center justify-center gap-2"
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <Info size={16} /> Support
+                      <Info size={16} /> {t.buttons.support}
                     </motion.button>
 
-                    {/* Logout Button (Red Style) */}
+                    {/* Logout Button */}
                     <motion.button
                       onClick={handleLogout}
                       className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 font-bold rounded-xl text-sm hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center"
-                      title="Sign Out"
+                      title={t.buttons.logout}
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -719,7 +859,6 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* ... (Stats & Details Grid remains unchanged) ... */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <motion.div
             className="space-y-6"
@@ -729,7 +868,7 @@ export default function ProfilePage() {
           >
             <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-lg h-full">
               <h3 className="text-sm font-black text-white uppercase tracking-wide mb-6 flex items-center gap-2 pb-4 border-b border-slate-700">
-                <User size={16} className="text-indigo-400" /> Personal Info
+                <User size={16} className="text-indigo-400" /> {t.info.title}
               </h3>
               <div className="space-y-6">
                 <div className="flex items-start gap-3">
@@ -738,7 +877,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                      Email Address
+                      {t.info.email}
                     </p>
                     <p
                       className="text-sm font-bold text-white truncate"
@@ -748,17 +887,17 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 </div>
-                {/* 🟢 ADDED BIRTH DATE TO DISPLAY */}
+                
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600 flex items-center justify-center text-slate-400">
                     <Calendar size={16} />
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                      Birth Date
+                      {t.info.birth}
                     </p>
                     <p className="text-sm font-bold text-white">
-                      {userData.birthDate || "Not set"}
+                      {userData.birthDate || t.info.notProvided}
                     </p>
                   </div>
                 </div>
@@ -768,7 +907,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                      Location
+                      {t.info.location}
                     </p>
                     <p className="text-sm font-bold text-white">
                       {userData.location?.district
@@ -784,16 +923,16 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                      Education
+                      {t.info.education}
                     </p>
                     <p className="text-sm font-bold text-white">
-                      {userData.education?.institution || "Not provided"}
+                      {userData.education?.institution || t.info.notProvided}
                     </p>
                     {userData.education?.grade && (
                       <p className="text-xs font-semibold text-slate-400 mt-1 bg-slate-700/50 inline-block px-2 py-0.5 rounded">
                         {userData.education.grade
-                          .replace("school_", "Grade ")
-                          .replace("uni_", "Year ")}
+                          .replace("school_", `${t.info.gradePrefix} `)
+                          .replace("uni_", `${t.info.yearPrefix} `)}
                       </p>
                     )}
                   </div>
@@ -813,19 +952,19 @@ export default function ProfilePage() {
                 {
                   icon: <Trophy size={20} />,
                   value: userData.totalXP.toLocaleString(),
-                  label: "Total XP",
+                  label: t.stats.xp,
                   color: "yellow",
                 },
                 {
                   icon: <Flame size={20} />,
                   value: userData.currentStreak,
-                  label: "Day Streak",
+                  label: t.stats.streak,
                   color: "orange",
                 },
                 {
                   icon: <Award size={20} />,
                   value: currentLevel,
-                  label: "Current Level",
+                  label: t.stats.level,
                   color: "purple",
                 },
               ].map((stat, idx) => (
@@ -853,11 +992,10 @@ export default function ProfilePage() {
             <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <Calendar size={16} className="text-indigo-400" /> Activity
-                  Log
+                  <Calendar size={16} className="text-indigo-400" /> {t.activity.title}
                 </h3>
                 <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-2 py-1 rounded-md">
-                  {activeDaysCount} Days Active
+                  {activeDaysCount} {t.activity.daysActive}
                 </span>
               </div>
               <div
@@ -866,11 +1004,11 @@ export default function ProfilePage() {
               >
                 <div className="flex gap-2 min-w-max">
                   <div className="flex flex-col gap-[3px] text-[9px] font-bold text-slate-400 pt-[2px] mt-4">
-                    <span className="h-[10px]">Mon</span>
+                    <span className="h-[10px]">{t.activity.mon}</span>
                     <span className="h-[10px]"></span>
-                    <span className="h-[10px]">Wed</span>
+                    <span className="h-[10px]">{t.activity.wed}</span>
                     <span className="h-[10px]"></span>
-                    <span className="h-[10px]">Fri</span>
+                    <span className="h-[10px]">{t.activity.fri}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex h-3 relative">
@@ -899,13 +1037,13 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 mt-4 text-[10px] text-slate-400 font-medium">
-                <span>Less</span>
+                <span>{t.activity.less}</span>
                 <div className="w-[10px] h-[10px] bg-slate-700/50 rounded-[2px] border border-slate-600"></div>
                 <div className="w-[10px] h-[10px] bg-indigo-500/20 rounded-[2px] border border-indigo-500/30"></div>
                 <div className="w-[10px] h-[10px] bg-indigo-500/40 rounded-[2px] border border-indigo-500/50"></div>
                 <div className="w-[10px] h-[10px] bg-indigo-500/60 rounded-[2px] border border-indigo-500/70"></div>
                 <div className="w-[10px] h-[10px] bg-indigo-500/80 rounded-[2px] border border-indigo-500"></div>
-                <span>More</span>
+                <span>{t.activity.more}</span>
               </div>
             </div>
           </motion.div>
@@ -926,12 +1064,13 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
 
-        {/* 🟢 ABOUT MODAL */}
+        {/* ABOUT MODAL */}
         <AnimatePresence>
           {isAboutOpen && (
             <AboutModal
               isOpen={isAboutOpen}
               onClose={() => setIsAboutOpen(false)}
+              t={t.about} // 🟢 Pass translation
             />
           )}
         </AnimatePresence>

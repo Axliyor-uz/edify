@@ -13,6 +13,170 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LatexRenderer from '@/components/LatexRenderer'; 
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Language Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const TEST_TRANSLATIONS = {
+  uz: {
+    loading: "Test yuklanmoqda...",
+    error: "Testni yuklashda xatolik",
+    back: "Ortga qaytish",
+    lobby: {
+      questions: "Savollar",
+      minutes: "Daqiqa",
+      instructions: "Ko'rsatmalar:",
+      rule1: "Chiqib ketsangiz ham vaqt davom etadi.",
+      rule2: "Sahifani keraksiz yangilamang.",
+      rule3: "Tab almashtirish yozib boriladi.",
+      startBtn: "Testni Boshlash",
+      cancel: "Bekor qilish"
+    },
+    header: {
+      question: "Savol",
+      focus: "Diqqat",
+      locked: "Qulflangan"
+    },
+    actions: {
+      flagged: "Belgilangan",
+      flag: "Belgilash",
+      prev: "Oldingi",
+      next: "Keyingi",
+      finish: "Yakunlash",
+      submit: "Topshirish",
+      viewResults: "Natijani Ko'rish",
+      returnClass: "Sinfga Qaytish"
+    },
+    modal: {
+      title: "Testni Yakunlaysizmi?",
+      answered: "Javob berildi",
+      unanswered: "Javobsiz Savollar",
+      back: "Qaytish"
+    },
+    result: {
+      submitted: "Topshirildi!",
+      saved: "Javoblaringiz saqlandi.",
+      score: "Ball",
+      hidden: "Natijalar hozircha yashirin."
+    },
+    toasts: {
+      deadline: "Muddat tugagan.",
+      maxAttempts: "Urinishlar limiti tugagan.",
+      expired: "Sessiya muddati tugagan.",
+      restored: "Sessiya tiklandi!",
+      focusWarn: "Ogohlantirish: Diqqat yo'qotildi!",
+      timeUp: "Vaqt tugadi! Topshirilmoqda...",
+      missedQ: "Siz savolni o'tkazib yubordingiz!",
+      success: "Topshirildi!",
+      fail: "Xatolik. Internetni tekshiring."
+    }
+  },
+  en: {
+    loading: "Loading Test...",
+    error: "Error loading test",
+    back: "Go Back",
+    lobby: {
+      questions: "Questions",
+      minutes: "Minutes",
+      instructions: "Instructions:",
+      rule1: "Timer continues if you leave.",
+      rule2: "Do not refresh unnecessarily.",
+      rule3: "Tab switching is recorded.",
+      startBtn: "Start Test Now",
+      cancel: "Cancel"
+    },
+    header: {
+      question: "Q",
+      focus: "Focus",
+      locked: "Locked"
+    },
+    actions: {
+      flagged: "Flagged",
+      flag: "Flag",
+      prev: "Previous",
+      next: "Next",
+      finish: "Finish Test",
+      submit: "Submit",
+      viewResults: "View Results",
+      returnClass: "Return to Class"
+    },
+    modal: {
+      title: "Finish Test?",
+      answered: "Answered",
+      unanswered: "Unanswered Questions",
+      back: "Back"
+    },
+    result: {
+      submitted: "Submitted!",
+      saved: "Your answers are recorded.",
+      score: "Score",
+      hidden: "Results are currently hidden."
+    },
+    toasts: {
+      deadline: "Deadline passed.",
+      maxAttempts: "Max attempts reached.",
+      expired: "Session expired.",
+      restored: "Session restored!",
+      focusWarn: "Warning: Focus lost!",
+      timeUp: "Time is up! Submitting...",
+      missedQ: "You missed a question!",
+      success: "Submitted!",
+      fail: "Submission failed. Check internet."
+    }
+  },
+  ru: {
+    loading: "Загрузка теста...",
+    error: "Ошибка загрузки",
+    back: "Назад",
+    lobby: {
+      questions: "Вопросов",
+      minutes: "Минут",
+      instructions: "Инструкции:",
+      rule1: "Таймер продолжается при выходе.",
+      rule2: "Не обновляйте страницу без нужды.",
+      rule3: "Переключение вкладок фиксируется.",
+      startBtn: "Начать Тест",
+      cancel: "Отмена"
+    },
+    header: {
+      question: "Вопрос",
+      focus: "Фокус",
+      locked: "Заблокировано"
+    },
+    actions: {
+      flagged: "Отмечено",
+      flag: "Отметить",
+      prev: "Назад",
+      next: "Далее",
+      finish: "Завершить",
+      submit: "Сдать",
+      viewResults: "Результаты",
+      returnClass: "Вернуться в класс"
+    },
+    modal: {
+      title: "Завершить тест?",
+      answered: "Отвечено",
+      unanswered: "Есть пропущенные вопросы",
+      back: "Назад"
+    },
+    result: {
+      submitted: "Сдано!",
+      saved: "Ваши ответы сохранены.",
+      score: "Балл",
+      hidden: "Результаты скрыты."
+    },
+    toasts: {
+      deadline: "Срок истек.",
+      maxAttempts: "Лимит попыток исчерпан.",
+      expired: "Сессия истекла.",
+      restored: "Сессия восстановлена!",
+      focusWarn: "Внимание: Потеря фокуса!",
+      timeUp: "Время вышло! Отправка...",
+      missedQ: "Вы пропустили вопрос!",
+      success: "Сдано!",
+      fail: "Ошибка отправки. Проверьте интернет."
+    }
+  }
+};
 
 // --- HELPER: Fixes [object Object] & duplication issues ---
 const getContentText = (content: any) => {
@@ -47,6 +211,10 @@ export default function TestRunnerPage() {
   const { classId, assignmentId } = useParams() as { classId: string; assignmentId: string };
   const { user } = useAuth();
   const router = useRouter();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = TEST_TRANSLATIONS[lang];
 
   // --- STATE DEFINITIONS ---
   const [state, setState] = useState<TestState>({
@@ -73,10 +241,7 @@ export default function TestRunnerPage() {
 
   // --- 1. INITIAL LOAD & RESTORE SESSION ---
   useEffect(() => {
-    // 🟢 FIX 1: Capture user existence
     if (!user) return;
-    
-    // 🟢 FIX 2: Capture UID immediately to satisfy TypeScript
     const userId = user.uid;
 
     async function loadData() {
@@ -89,7 +254,7 @@ export default function TestRunnerPage() {
 
         // Check Deadline
         if (assignData.dueAt && isPastDeadline(assignData.dueAt)) {
-          toast.error("Deadline passed.");
+          toast.error(t.toasts.deadline);
           localStorage.removeItem(STORAGE_KEY);
           router.push(`/classes/${classId}`);
           return;
@@ -98,11 +263,10 @@ export default function TestRunnerPage() {
         // Check Attempts
         const limit = assignData.allowedAttempts ?? 1;
         if (limit !== 0) { 
-          // 🟢 FIX 3: Use 'userId' variable instead of 'user.uid'
           const attemptsQ = query(collection(db, 'attempts'), where('assignmentId', '==', assignmentId), where('userId', '==', userId));
           const attemptsSnap = await getDocs(attemptsQ);
           if (attemptsSnap.size >= limit) {
-            toast.error("Max attempts reached.");
+            toast.error(t.toasts.maxAttempts);
             localStorage.removeItem(STORAGE_KEY);
             router.push(`/classes/${classId}/test/${assignmentId}/results`);
             return;
@@ -124,7 +288,7 @@ export default function TestRunnerPage() {
           const realTimeRemaining = Math.floor((parsed.endTime - now) / 1000);
 
           if (realTimeRemaining <= 0) {
-            toast.error("Session expired.");
+            toast.error(t.toasts.expired);
             localStorage.removeItem(STORAGE_KEY);
           } else {
             // RESUME SESSION
@@ -140,7 +304,7 @@ export default function TestRunnerPage() {
               timeRemaining: realTimeRemaining,
               endTime: parsed.endTime
             });
-            toast.success("Session restored!");
+            toast.success(t.toasts.restored);
             return;
           }
         }
@@ -161,7 +325,7 @@ export default function TestRunnerPage() {
       }
     }
     loadData();
-  }, [classId, assignmentId, user, router, STORAGE_KEY]);
+  }, [classId, assignmentId, user, router, STORAGE_KEY, t]);
 
   // --- 2. AUTO-SAVE EFFECT ---
   useEffect(() => {
@@ -212,7 +376,7 @@ export default function TestRunnerPage() {
     const handleFocusLoss = () => {
       if (showSubmitModal) return;
       setState(prev => ({ ...prev, tabSwitchCount: prev.tabSwitchCount + 1 }));
-      toast("Warning: Focus lost!", { icon: '⚠️' });
+      toast(t.toasts.focusWarn, { icon: '⚠️' });
     };
 
     const handleVisibilityChange = () => { if (document.hidden) handleFocusLoss(); };
@@ -228,7 +392,7 @@ export default function TestRunnerPage() {
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [state.status, showSubmitModal]);
+  }, [state.status, showSubmitModal, t]);
 
   // --- HELPER FUNCTIONS ---
   const formatTime = (seconds: number) => {
@@ -271,7 +435,7 @@ export default function TestRunnerPage() {
   };
 
   const handleAutoSubmit = () => {
-    toast("Time is up! Submitting...", { icon: '⏰' });
+    toast(t.toasts.timeUp, { icon: '⏰' });
     handleSubmit();
   };
 
@@ -282,7 +446,7 @@ export default function TestRunnerPage() {
     }
     const firstSkippedIndex = state.questions.findIndex(q => !state.answers[q.id]);
     if (firstSkippedIndex !== -1) {
-      toast("You missed a question!", { icon: '📝' });
+      toast(t.toasts.missedQ, { icon: '📝' });
       setState(p => ({ ...p, currentQuestionIndex: firstSkippedIndex }));
     } else {
       setShowSubmitModal(true);
@@ -293,7 +457,6 @@ export default function TestRunnerPage() {
     setShowSubmitModal(false);
     if (!user) return;
     
-    // 🟢 FIX 4: Capture ID here too for safety
     const userId = user.uid;
 
     localStorage.removeItem(STORAGE_KEY); 
@@ -334,27 +497,27 @@ export default function TestRunnerPage() {
 
       setState(prev => ({ ...prev, status: 'submitted', score: correctCount }));
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      toast.success("Submitted!");
+      toast.success(t.toasts.success);
 
     } catch (e) {
         console.error(e);
-        toast.error("Submission failed. Check internet.");
+        toast.error(t.toasts.fail);
     }
   };
 
   // --- RENDERERS ---
 
-  if (state.status === 'loading') return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600 gap-3"><Loader2 className="animate-spin" size={32} /><span className="font-bold">Loading Test...</span></div>;
-  if (state.status === 'error') return <div className="flex h-screen items-center justify-center flex-col gap-4"><AlertTriangle size={48} className="text-red-500" /><h1 className="text-xl font-bold">Error loading test</h1><button onClick={() => router.back()} className="text-indigo-600 hover:underline">Go Back</button></div>;
+  if (state.status === 'loading') return <div className="flex h-screen items-center justify-center bg-slate-50 text-indigo-600 gap-3"><Loader2 className="animate-spin" size={32} /><span className="font-bold">{t.loading}</span></div>;
+  if (state.status === 'error') return <div className="flex h-screen items-center justify-center flex-col gap-4"><AlertTriangle size={48} className="text-red-500" /><h1 className="text-xl font-bold">{t.error}</h1><button onClick={() => router.back()} className="text-indigo-600 hover:underline">{t.back}</button></div>;
 
   if (state.status === 'lobby') return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-lg w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center space-y-6">
         <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce"><Clock size={40} /></div>
-        <div><h1 className="text-3xl font-black text-slate-900 mb-2">{state.test.title}</h1><p className="text-slate-500 font-medium">{state.questions.length} Questions • {state.test.duration || 60} Minutes</p></div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-left flex gap-3"><AlertCircle className="text-yellow-600 shrink-0" size={24} /><div className="text-sm text-yellow-800"><p className="font-bold mb-1">Instructions:</p><ul className="list-disc list-inside space-y-1 opacity-90"><li>Timer continues if you leave.</li><li>Do not refresh unnecessarily.</li><li>Tab switching is recorded.</li></ul></div></div>
-        <button onClick={startTest} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-2xl shadow-lg shadow-indigo-200 hover:scale-[1.02] transition-all">Start Test Now</button>
-        <button onClick={() => router.back()} className="text-slate-400 font-bold text-sm hover:text-slate-600">Cancel</button>
+        <div><h1 className="text-3xl font-black text-slate-900 mb-2">{state.test.title}</h1><p className="text-slate-500 font-medium">{state.questions.length} {t.lobby.questions} • {state.test.duration || 60} {t.lobby.minutes}</p></div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-left flex gap-3"><AlertCircle className="text-yellow-600 shrink-0" size={24} /><div className="text-sm text-yellow-800"><p className="font-bold mb-1">{t.lobby.instructions}</p><ul className="list-disc list-inside space-y-1 opacity-90"><li>{t.lobby.rule1}</li><li>{t.lobby.rule2}</li><li>{t.lobby.rule3}</li></ul></div></div>
+        <button onClick={startTest} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-2xl shadow-lg shadow-indigo-200 hover:scale-[1.02] transition-all">{t.lobby.startBtn}</button>
+        <button onClick={() => router.back()} className="text-slate-400 font-bold text-sm hover:text-slate-600">{t.lobby.cancel}</button>
       </div>
     </div>
   );
@@ -367,15 +530,15 @@ export default function TestRunnerPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center space-y-6 animate-in zoom-in duration-300">
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm"><CheckCircle size={40} /></div>
-          <div><h1 className="text-3xl font-black text-slate-900 mb-2">Submitted!</h1><p className="text-slate-500 font-medium">Your answers are recorded.</p></div>
+          <div><h1 className="text-3xl font-black text-slate-900 mb-2">{t.result.submitted}</h1><p className="text-slate-500 font-medium">{t.result.saved}</p></div>
           {canShow ? (
             <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl animate-in fade-in">
-               <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Score</p>
+               <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">{t.result.score}</p>
                <p className="text-3xl font-black text-indigo-600 mb-3">{state.score} <span className="text-lg text-slate-400">/ {state.questions.length}</span></p>
-               <button onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"><Eye size={18} /> View Results</button>
+               <button onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"><Eye size={18} /> {t.actions.viewResults}</button>
             </div>
-          ) : <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl text-yellow-800 text-sm font-medium flex items-start gap-3 text-left"><Lock size={20} className="shrink-0 mt-0.5" /><p>Results are currently hidden.</p></div>}
-          <button onClick={() => router.push(`/classes/${classId}`)} className="w-full py-3 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">Return to Class</button>
+          ) : <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl text-yellow-800 text-sm font-medium flex items-start gap-3 text-left"><Lock size={20} className="shrink-0 mt-0.5" /><p>{t.result.hidden}</p></div>}
+          <button onClick={() => router.push(`/classes/${classId}`)} className="w-full py-3 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">{t.actions.returnClass}</button>
         </div>
       </div>
     );
@@ -394,13 +557,13 @@ export default function TestRunnerPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4"><Flag size={32} /></div>
-              <h2 className="text-xl font-black text-slate-900">Finish Test?</h2>
-              <p className="text-slate-500 mt-2 text-sm">Answered <strong className="text-slate-900">{answeredCount}</strong> / <strong className="text-slate-900">{state.questions.length}</strong></p>
-              {answeredCount < state.questions.length && <p className="text-orange-600 font-bold text-xs mt-3 bg-orange-50 py-1 px-3 rounded-full inline-block">⚠️ Unanswered Questions</p>}
+              <h2 className="text-xl font-black text-slate-900">{t.modal.title}</h2>
+              <p className="text-slate-500 mt-2 text-sm">{t.modal.answered} <strong className="text-slate-900">{answeredCount}</strong> / <strong className="text-slate-900">{state.questions.length}</strong></p>
+              {answeredCount < state.questions.length && <p className="text-orange-600 font-bold text-xs mt-3 bg-orange-50 py-1 px-3 rounded-full inline-block">⚠️ {t.modal.unanswered}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowSubmitModal(false)} className="py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">Back</button>
-              <button onClick={handleSubmit} className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg">Submit</button>
+              <button onClick={() => setShowSubmitModal(false)} className="py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-xl">{t.modal.back}</button>
+              <button onClick={handleSubmit} className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg">{t.actions.submit}</button>
             </div>
           </div>
         </div>
@@ -409,8 +572,8 @@ export default function TestRunnerPage() {
       {/* HEADER */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-4 md:px-6 bg-slate-50 shrink-0">
         <div className="font-black text-slate-700 flex items-center gap-3">
-          <span className="text-sm md:text-base">Q {state.currentQuestionIndex + 1} <span className="text-slate-400 font-medium">/ {state.questions.length}</span></span>
-          {state.tabSwitchCount > 0 && <div className="flex items-center gap-1.5 bg-red-100 border border-red-200 text-red-700 px-2 py-0.5 rounded-full animate-pulse"><AlertCircle size={12} /><span className="text-[10px] md:text-xs font-bold">Focus: {state.tabSwitchCount}</span></div>}
+          <span className="text-sm md:text-base">{t.header.question} {state.currentQuestionIndex + 1} <span className="text-slate-400 font-medium">/ {state.questions.length}</span></span>
+          {state.tabSwitchCount > 0 && <div className="flex items-center gap-1.5 bg-red-100 border border-red-200 text-red-700 px-2 py-0.5 rounded-full animate-pulse"><AlertCircle size={12} /><span className="text-[10px] md:text-xs font-bold">{t.header.focus}: {state.tabSwitchCount}</span></div>}
         </div>
         <div className={`flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full font-mono font-bold border transition-colors text-sm md:text-base ${state.timeRemaining < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-white text-slate-700 border-slate-200'}`}>
           <Clock size={16} />{formatTime(state.timeRemaining)}
@@ -461,9 +624,9 @@ export default function TestRunnerPage() {
       {/* FOOTER */}
       <footer className="h-auto min-h-[80px] border-t border-slate-200 bg-white px-4 md:px-6 py-4 flex items-center justify-between shrink-0">
          <div className="flex w-full md:w-auto gap-3">
-           <button onClick={toggleFlag} className={`flex-1 md:flex-none py-3 px-4 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-colors ${isFlagged ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}><Flag size={18} fill={isFlagged ? "currentColor" : "none"} /><span className="hidden md:inline">{isFlagged ? 'Flagged' : 'Flag'}</span></button>
-           <button onClick={() => setState(p => ({...p, currentQuestionIndex: Math.max(0, p.currentQuestionIndex - 1)}))} disabled={state.currentQuestionIndex === 0} className="flex-1 md:flex-none py-3 px-6 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"><ChevronLeft size={20} className="md:hidden"/> <span className="hidden md:inline">Previous</span></button>
-           <button onClick={handleNextOrFinish} className={`flex-[2] md:flex-none px-8 py-3 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg ${state.currentQuestionIndex < state.questions.length - 1 ? 'bg-slate-900 hover:bg-black' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`}>{state.currentQuestionIndex < state.questions.length - 1 ? <>Next <ChevronRight size={18} /></> : 'Finish Test'}</button>
+           <button onClick={toggleFlag} className={`flex-1 md:flex-none py-3 px-4 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-colors ${isFlagged ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}><Flag size={18} fill={isFlagged ? "currentColor" : "none"} /><span className="hidden md:inline">{isFlagged ? t.actions.flagged : t.actions.flag}</span></button>
+           <button onClick={() => setState(p => ({...p, currentQuestionIndex: Math.max(0, p.currentQuestionIndex - 1)}))} disabled={state.currentQuestionIndex === 0} className="flex-1 md:flex-none py-3 px-6 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"><ChevronLeft size={20} className="md:hidden"/> <span className="hidden md:inline">{t.actions.prev}</span></button>
+           <button onClick={handleNextOrFinish} className={`flex-[2] md:flex-none px-8 py-3 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg ${state.currentQuestionIndex < state.questions.length - 1 ? 'bg-slate-900 hover:bg-black' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`}>{state.currentQuestionIndex < state.questions.length - 1 ? <>{t.actions.next} <ChevronRight size={18} /></> : t.actions.finish}</button>
          </div>
       </footer>
     </div>

@@ -9,6 +9,164 @@ import {
 } from 'lucide-react';
 import CartItem from '../../create/_components/CartItem';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const EDIT_TEST_TRANSLATIONS = {
+  uz: {
+    title: "Testni Boshqarish",
+    tabs: {
+      settings: "Sozlamalar",
+      questions: "Savollar"
+    },
+    settings: {
+      name: "Test Nomi",
+      duration: "Davomiyligi (Daqiqa)",
+      mins: "daq",
+      none: "Cheklovsiz",
+      custom: "MAXSUS:",
+      unlimited: "(Cheklovsiz Vaqt)",
+      shuffleTitle: "Savollarni Aralashtirish",
+      shuffleDesc: "Har bir o'quvchi uchun tartibni o'zgartirish",
+      securityTitle: "Javoblar Xavfsizligi",
+      afterDue: {
+        title: "Muddatdan keyin ko'rsatish",
+        desc: "O'quvchilar javoblarni faqat muddat tugagandan so'ng ko'rishadi."
+      },
+      never: {
+        title: "Hech qachon ko'rsatilmasin",
+        desc: "Qat'iy rejim. O'quvchilar faqat yakuniy ballni ko'rishadi."
+      },
+      always: {
+        title: "Darhol ko'rsatish",
+        desc: "Javoblar topshirilgandan so'ng darhol ochiladi."
+      },
+      danger: "Xavfli Hudud",
+      archive: "Arxivlash",
+      restore: "Tiklash",
+      delete: "O'chirish"
+    },
+    questions: {
+      empty: "Savollar mavjud emas."
+    },
+    buttons: {
+      save: "O'zgarishlarni Saqlash",
+      saving: "Saqlanmoqda..."
+    },
+    toasts: {
+      saved: "O'zgarishlar saqlandi!",
+      failSave: "Saqlashda xatolik",
+      archived: "Test Arxivlandi",
+      restored: "Test Tiklandi",
+      failStatus: "Holatni yangilashda xatolik",
+      deleted: "Test butunlay o'chirildi",
+      failDelete: "O'chirishda xatolik",
+      confirmDelete: "Ishonchingiz komilmi? Bu amalni qaytarib bo'lmaydi."
+    }
+  },
+  en: {
+    title: "Manage Test",
+    tabs: {
+      settings: "Settings",
+      questions: "Questions"
+    },
+    settings: {
+      name: "Test Title",
+      duration: "Duration (Minutes)",
+      mins: "m",
+      none: "None",
+      custom: "CUSTOM:",
+      unlimited: "(Unlimited Time)",
+      shuffleTitle: "Shuffle Questions",
+      shuffleDesc: "Randomize order for every student",
+      securityTitle: "Answer Key Security",
+      afterDue: {
+        title: "Show After Deadline",
+        desc: "Students see answers only after the due date passes."
+      },
+      never: {
+        title: "Never Show Answers",
+        desc: "Strict mode. Students only see their final score."
+      },
+      always: {
+        title: "Show Immediately",
+        desc: "Answers revealed right after submission."
+      },
+      danger: "Danger Zone",
+      archive: "Archive",
+      restore: "Restore",
+      delete: "Delete"
+    },
+    questions: {
+      empty: "No questions available."
+    },
+    buttons: {
+      save: "Save Changes",
+      saving: "Saving..."
+    },
+    toasts: {
+      saved: "Changes saved!",
+      failSave: "Failed to save changes",
+      archived: "Test Archived",
+      restored: "Test Restored",
+      failStatus: "Error updating status",
+      deleted: "Test deleted permanently",
+      failDelete: "Delete failed",
+      confirmDelete: "Are you sure? This cannot be undone."
+    }
+  },
+  ru: {
+    title: "Управление Тестом",
+    tabs: {
+      settings: "Настройки",
+      questions: "Вопросы"
+    },
+    settings: {
+      name: "Название Теста",
+      duration: "Длительность (Минуты)",
+      mins: "мин",
+      none: "Нет",
+      custom: "СВОЕ:",
+      unlimited: "(Без ограничений)",
+      shuffleTitle: "Перемешать вопросы",
+      shuffleDesc: "Случайный порядок для каждого ученика",
+      securityTitle: "Безопасность ответов",
+      afterDue: {
+        title: "Показать после срока",
+        desc: "Ученики увидят ответы только после истечения срока сдачи."
+      },
+      never: {
+        title: "Никогда не показывать",
+        desc: "Строгий режим. Ученики видят только итоговый балл."
+      },
+      always: {
+        title: "Показать сразу",
+        desc: "Ответы открываются сразу после сдачи."
+      },
+      danger: "Опасная Зона",
+      archive: "Архивировать",
+      restore: "Восстановить",
+      delete: "Удалить"
+    },
+    questions: {
+      empty: "Вопросов нет."
+    },
+    buttons: {
+      save: "Сохранить изменения",
+      saving: "Сохранение..."
+    },
+    toasts: {
+      saved: "Изменения сохранены!",
+      failSave: "Ошибка сохранения",
+      archived: "Тест архивирован",
+      restored: "Тест восстановлен",
+      failStatus: "Ошибка обновления статуса",
+      deleted: "Тест удален навсегда",
+      failDelete: "Не удалось удалить",
+      confirmDelete: "Вы уверены? Это действие нельзя отменить."
+    }
+  }
+};
 
 interface Props {
   test: any;
@@ -19,6 +177,10 @@ interface Props {
 export default function EditTestModal({ test, isOpen, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<'settings' | 'questions'>('settings');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = EDIT_TEST_TRANSLATIONS[lang];
 
   // 1. UPDATED STATE: 'resultsVisibility' instead of 'showResults'
   const [settings, setSettings] = useState({
@@ -66,11 +228,11 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
         questions: questions,
         questionCount: questions.length
       });
-      toast.success("Changes saved!");
+      toast.success(t.toasts.saved);
       onClose();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to save changes");
+      toast.error(t.toasts.failSave);
     } finally {
       setIsSaving(false);
     }
@@ -80,18 +242,18 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
     const newStatus = settings.status === 'active' ? 'archived' : 'active';
     try {
       await updateDoc(doc(db, 'custom_tests', test.id), { status: newStatus });
-      toast.success(newStatus === 'archived' ? "Test Archived" : "Test Restored");
+      toast.success(newStatus === 'archived' ? t.toasts.archived : t.toasts.restored);
       onClose();
-    } catch (e) { toast.error("Error updating status"); }
+    } catch (e) { toast.error(t.toasts.failStatus); }
   };
 
   const handleDeleteTest = async () => {
-    if (!confirm("Are you sure? This cannot be undone.")) return;
+    if (!confirm(t.toasts.confirmDelete)) return;
     try {
       await deleteDoc(doc(db, 'custom_tests', test.id));
-      toast.success("Test deleted permanently");
+      toast.success(t.toasts.deleted);
       onClose();
-    } catch (e) { toast.error("Delete failed"); }
+    } catch (e) { toast.error(t.toasts.failDelete); }
   };
 
   const durationOptions = [0, 10, 20, 30, 45, 60];
@@ -105,7 +267,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
-            <h2 className="text-xl font-black text-slate-800">Manage Test</h2>
+            <h2 className="text-xl font-black text-slate-800">{t.title}</h2>
             <p className="text-xs text-slate-500 font-mono">{test.accessCode}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><X size={20}/></button>
@@ -117,13 +279,13 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
             onClick={() => setActiveTab('settings')}
             className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'settings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
           >
-            <Settings size={16} /> Settings
+            <Settings size={16} /> {t.tabs.settings}
           </button>
           <button 
             onClick={() => setActiveTab('questions')}
             className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'questions' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
           >
-            <FileText size={16} /> Questions ({questions.length})
+            <FileText size={16} /> {t.tabs.questions} ({questions.length})
           </button>
         </div>
 
@@ -136,7 +298,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Test Title</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t.settings.name}</label>
                 <input 
                   type="text" 
                   value={settings.title}
@@ -148,7 +310,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               {/* Duration */}
               <div className="bg-white p-5 rounded-xl border border-slate-200">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                    <Clock size={16} className="text-indigo-500"/> Duration (Minutes)
+                    <Clock size={16} className="text-indigo-500"/> {t.settings.duration}
                 </label>
                 <div className="grid grid-cols-6 gap-2 mb-4">
                   {durationOptions.map((mins) => (
@@ -161,12 +323,12 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                       }`}
                     >
-                      {mins === 0 ? 'None' : `${mins}m`}
+                      {mins === 0 ? t.settings.none : `${mins}${t.settings.mins}`}
                     </button>
                   ))}
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-slate-400">CUSTOM:</span>
+                  <span className="text-xs font-bold text-slate-400">{t.settings.custom}</span>
                   <input 
                     type="number" 
                     min="0"
@@ -175,7 +337,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                     className="w-24 p-2 border border-slate-200 rounded-lg text-sm font-bold text-center focus:border-indigo-500 outline-none"
                   />
                   <span className="text-xs text-slate-400 font-medium">
-                    {settings.duration === 0 ? "(Unlimited Time)" : "minutes"}
+                    {settings.duration === 0 ? t.settings.unlimited : t.settings.mins}
                   </span>
                 </div>
               </div>
@@ -183,8 +345,8 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               {/* Shuffle Switch */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div>
-                    <div className="text-sm font-bold text-slate-700">Shuffle Questions</div>
-                    <p className="text-xs text-slate-500 mt-0.5">Randomize order for every student</p>
+                    <div className="text-sm font-bold text-slate-700">{t.settings.shuffleTitle}</div>
+                    <p className="text-xs text-slate-500 mt-0.5">{t.settings.shuffleDesc}</p>
                 </div>
                 <button 
                     onClick={() => setSettings({...settings, shuffle: !settings.shuffle})}
@@ -197,7 +359,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               {/* 3. NEW: RESULTS VISIBILITY SELECTOR */}
               <div className="bg-white p-5 rounded-xl border border-slate-200">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                    <Shield size={16} className="text-indigo-500"/> Answer Key Security
+                    <Shield size={16} className="text-indigo-500"/> {t.settings.securityTitle}
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   
@@ -212,8 +374,8 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                       <CalendarClock size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Show After Deadline</p>
-                      <p className="text-[10px] text-slate-500">Secure. Reveals answers only after due date.</p>
+                      <p className="text-sm font-bold text-slate-800">{t.settings.afterDue.title}</p>
+                      <p className="text-[10px] text-slate-500">{t.settings.afterDue.desc}</p>
                     </div>
                     {settings.resultsVisibility === 'after_due' && <CheckCircle size={18} className="text-emerald-500 ml-auto" />}
                   </button>
@@ -229,8 +391,8 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                       <EyeOff size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Never Show Answers</p>
-                      <p className="text-[10px] text-slate-500">Strict. Students only see their final score.</p>
+                      <p className="text-sm font-bold text-slate-800">{t.settings.never.title}</p>
+                      <p className="text-[10px] text-slate-500">{t.settings.never.desc}</p>
                     </div>
                     {settings.resultsVisibility === 'never' && <CheckCircle size={18} className="text-slate-600 ml-auto" />}
                   </button>
@@ -246,8 +408,8 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                       <Eye size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Show Immediately</p>
-                      <p className="text-[10px] text-slate-500">Open. Answers shown right after submission.</p>
+                      <p className="text-sm font-bold text-slate-800">{t.settings.always.title}</p>
+                      <p className="text-[10px] text-slate-500">{t.settings.always.desc}</p>
                     </div>
                     {settings.resultsVisibility === 'always' && <CheckCircle size={18} className="text-amber-500 ml-auto" />}
                   </button>
@@ -257,19 +419,19 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
 
               {/* Danger Zone */}
               <div className="mt-8 pt-8 border-t border-slate-200">
-                <p className="text-xs font-bold text-red-400 uppercase mb-4">Danger Zone</p>
+                <p className="text-xs font-bold text-red-400 uppercase mb-4">{t.settings.danger}</p>
                 <div className="flex gap-3">
                    <button 
                      onClick={handleArchiveToggle}
                      className="flex-1 py-3 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center gap-2 text-sm"
                    >
-                     {settings.status === 'active' ? <><Archive size={16}/> Archive</> : <><RefreshCw size={16}/> Restore</>}
+                     {settings.status === 'active' ? <><Archive size={16}/> {t.settings.archive}</> : <><RefreshCw size={16}/> {t.settings.restore}</>}
                    </button>
                    <button 
                      onClick={handleDeleteTest}
                      className="flex-1 py-3 bg-red-50 border border-red-100 rounded-xl font-bold text-red-600 hover:bg-red-100 flex items-center justify-center gap-2 text-sm"
                    >
-                     <Trash2 size={16}/> Delete
+                     <Trash2 size={16}/> {t.settings.delete}
                    </button>
                 </div>
               </div>
@@ -291,7 +453,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               {questions.length === 0 && (
                 <div className="text-center py-10 text-slate-400 flex flex-col items-center">
                   <AlertTriangle size={32} className="mb-2 opacity-50"/>
-                  <span className="text-sm">No questions available.</span>
+                  <span className="text-sm">{t.questions.empty}</span>
                 </div>
               )}
             </div>
@@ -306,7 +468,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
              className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-70"
            >
              {isSaving ? <RefreshCw className="animate-spin" size={18}/> : <Save size={18}/>}
-             Save Changes
+             {isSaving ? t.buttons.saving : t.buttons.save}
            </button>
         </div>
       </div>

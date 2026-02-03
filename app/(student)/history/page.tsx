@@ -10,6 +10,65 @@ import {
   TrendingUp, FileText 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useStudentLanguage } from '../layout'; // 🟢 Import Language Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const HISTORY_TRANSLATIONS = {
+  uz: {
+    title: "Testlar Tarixi",
+    subtitle: "O'tgan natijalaringizni ko'rib chiqing va tahlil qiling.",
+    stats: "Jami Testlar",
+    empty: {
+      title: "Hali tarix mavjud emas",
+      desc: "Birinchi topshiriqni bajarganingizdan so'ng, natijalaringiz bu yerda avtomatik ravishda paydo bo'ladi."
+    },
+    card: {
+      unknown: "Noma'lum Test",
+      untitled: "Nomsiz Test",
+      removed: "O'chirilgan Test",
+      score: "Ball",
+      dateNA: "Sana yo'q",
+      correct: "To'g'ri",
+      analysis: "Tahlil"
+    }
+  },
+  en: {
+    title: "Quiz History",
+    subtitle: "Review your past performance and analyze results.",
+    stats: "Total Tests",
+    empty: {
+      title: "No History Yet",
+      desc: "Your quiz results will appear here automatically after you complete your first assignment."
+    },
+    card: {
+      unknown: "Unknown Test",
+      untitled: "Untitled Test",
+      removed: "Test Removed",
+      score: "Score",
+      dateNA: "Date N/A",
+      correct: "Correct",
+      analysis: "Analysis"
+    }
+  },
+  ru: {
+    title: "История Тестов",
+    subtitle: "Просмотрите свои прошлые результаты и анализируйте успеваемость.",
+    stats: "Всего Тестов",
+    empty: {
+      title: "История пуста",
+      desc: "Ваши результаты появятся здесь автоматически после выполнения первого задания."
+    },
+    card: {
+      unknown: "Неизвестный тест",
+      untitled: "Тест без названия",
+      removed: "Тест удален",
+      score: "Балл",
+      dateNA: "Нет даты",
+      correct: "Верно",
+      analysis: "Анализ"
+    }
+  }
+};
 
 // --- VISUAL BACKGROUND COMPONENTS ---
 const FloatingParticles = () => {
@@ -51,14 +110,12 @@ const FloatingParticles = () => {
   );
 };
 
-// 🟢 FIX 1: Add Interface for Props
 interface GlowingOrbProps {
   color: string;
   size: number;
   position: { x: string; y: string };
 }
 
-// 🟢 FIX 2: Apply Interface
 const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   <motion.div
     className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
@@ -73,16 +130,19 @@ const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
   />
 );
 
-// 🟢 FIX 3: Add Interface for HistoryCard
 interface HistoryCardProps {
-  attempt: any; // Using 'any' to handle the complex Firestore object flexibly
+  attempt: any; 
   index: number;
 }
 
 // --- HISTORY CARD COMPONENT ---
-// 🟢 FIX 4: Apply Interface
 const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
   const router = useRouter();
+  
+  // 🟢 Use Hook inside child component
+  const { lang } = useStudentLanguage();
+  const t = HISTORY_TRANSLATIONS[lang].card;
+
   const [testTitle, setTestTitle] = useState(attempt.testTitle || '');
 
   useEffect(() => {
@@ -90,26 +150,25 @@ const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
     const fetchTitle = async () => {
       try {
         if (!attempt.testId) {
-          setTestTitle("Unknown Test");
+          setTestTitle(t.unknown);
           return;
         }
         const testRef = doc(db, 'custom_tests', attempt.testId);
         const testSnap = await getDoc(testRef);
         if (testSnap.exists()) {
-          setTestTitle(testSnap.data().title || "Untitled Test");
+          setTestTitle(testSnap.data().title || t.untitled);
         } else {
-          setTestTitle("Test Removed");
+          setTestTitle(t.removed);
         }
       } catch (error) {
-        setTestTitle("Untitled Test");
+        setTestTitle(t.untitled);
       }
     };
     fetchTitle();
-  }, [attempt.testId, attempt.testTitle]);
+  }, [attempt.testId, attempt.testTitle, t]); // Added 't' dependency
 
   const percentage = Math.round((attempt.score / attempt.totalQuestions) * 100);
   
-  // Dynamic Styles based on score
   let statusColor = "text-slate-400 border-slate-600 bg-slate-700/50";
   let glowColor = "group-hover:shadow-slate-500/20";
   
@@ -132,18 +191,15 @@ const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
       onClick={() => router.push(`/classes/${attempt.classId}/test/${attempt.assignmentId}/results`)}
       className={`group relative bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 md:p-5 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer shadow-lg ${glowColor} overflow-hidden`}
     >
-      {/* Background Hover Highlight */}
       <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       <div className="relative flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
         
-        {/* Score Badge */}
         <div className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 border-2 transition-transform group-hover:scale-105 ${statusColor}`}>
            <span className="text-xl font-black">{percentage}%</span>
-           <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">Score</span>
+           <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">{t.score}</span>
         </div>
 
-        {/* Info */}
         <div className="flex-1 space-y-1.5 min-w-0">
           <h3 className="font-bold text-white text-lg group-hover:text-blue-400 transition-colors truncate pr-4">
             {testTitle || <span className="animate-pulse bg-slate-700 rounded h-5 w-32 inline-block"/>}
@@ -154,21 +210,19 @@ const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
                <Calendar size={13} className="text-blue-400" /> 
                {attempt.submittedAt?.seconds 
                  ? new Date(attempt.submittedAt.seconds * 1000).toLocaleDateString() 
-                 : 'Date N/A'}
+                 : t.dateNA}
              </div>
              <div className="flex items-center gap-1.5 bg-slate-900/50 px-2 py-1 rounded-md border border-slate-800">
                <CheckCircle2 size={13} className={percentage >= 50 ? "text-emerald-400" : "text-rose-400"} /> 
-               {attempt.score} / {attempt.totalQuestions} Correct
+               {attempt.score} / {attempt.totalQuestions} {t.correct}
              </div>
           </div>
         </div>
 
-        {/* Action Button (Desktop: Text, Mobile: Icon) */}
         <div className="hidden md:flex items-center gap-2 text-blue-400 font-bold text-sm bg-slate-900/50 px-4 py-2.5 rounded-xl border border-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all self-center ml-auto">
-          Analysis <ArrowRight size={16} />
+          {t.analysis} <ArrowRight size={16} />
         </div>
         
-        {/* Mobile Chevron */}
         <div className="md:hidden absolute top-4 right-0 text-slate-600 group-hover:text-blue-400">
             <ArrowRight size={20} />
         </div>
@@ -180,7 +234,12 @@ const HistoryCard = ({ attempt, index }: HistoryCardProps) => {
 // --- MAIN PAGE ---
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [attempts, setAttempts] = useState<any[]>([]); // 🟢 FIX 5: Typed State
+  
+  // 🟢 Use Hook inside Main Page
+  const { lang } = useStudentLanguage();
+  const t = HISTORY_TRANSLATIONS[lang];
+
+  const [attempts, setAttempts] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -247,10 +306,10 @@ export default function HistoryPage() {
   <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-blue-500/20">
     <History size={28} />
   </div>
-  Quiz History
+  {t.title}
 </h1>
              <p className="text-slate-400 mt-2 font-medium text-lg">
-               Review your past performance and analyze results.
+               {t.subtitle}
              </p>
            </div>
 
@@ -263,7 +322,7 @@ export default function HistoryPage() {
                transition={{ delay: 0.2 }}
              >
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-0.5">
-                   <FileText size={12} /> Total Tests
+                   <FileText size={12} /> {t.stats}
                 </div>
                 <div className="text-3xl font-black text-white tracking-tight">{attempts.length}</div>
              </motion.div>
@@ -283,9 +342,9 @@ export default function HistoryPage() {
                 <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-600">
                   <TrendingUp size={32} className="text-slate-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">No History Yet</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">{t.empty.title}</h3>
                 <p className="text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Your quiz results will appear here automatically after you complete your first assignment.
+                  {t.empty.desc}
                 </p>
               </div>
             </motion.div>

@@ -6,6 +6,50 @@ import { doc, getDoc, updateDoc, arrayRemove, collection, query, getDocs, orderB
 import { Trash2, Eye, UserX, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StudentDetailsModal from './StudentDetailsModal';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const ROSTER_TRANSLATIONS = {
+  uz: {
+    loading: "Jurnal yuklanmoqda...",
+    empty: "Bu sinfda hali o'quvchilar yo'q.",
+    unknown: "Noma'lum",
+    deleted: "o'chirilgan",
+    confirmRemove: "Bu o'quvchini sinfdan o'chirasizmi?",
+    removed: "O'quvchi o'chirildi",
+    errRemove: "O'quvchini o'chirishda xatolik",
+    errLoad: "Sinf ma'lumotlarini yuklab bo'lmadi",
+    hint: "Baholarni ko'rish uchun 'Batafsil' tugmasini bosing",
+    details: "Batafsil",
+    removeBtn: "Sinfdan o'chirish"
+  },
+  en: {
+    loading: "Loading roster...",
+    empty: "No students in this class yet.",
+    unknown: "Unknown",
+    deleted: "deleted",
+    confirmRemove: "Remove this student from the class?",
+    removed: "Student removed",
+    errRemove: "Error removing student",
+    errLoad: "Could not load class data",
+    hint: "Click 'Details' to view grades",
+    details: "Details",
+    removeBtn: "Remove from class"
+  },
+  ru: {
+    loading: "Загрузка списка...",
+    empty: "В этом классе пока нет учеников.",
+    unknown: "Неизвестно",
+    deleted: "удален",
+    confirmRemove: "Удалить этого ученика из класса?",
+    removed: "Ученик удален",
+    errRemove: "Ошибка удаления ученика",
+    errLoad: "Не удалось загрузить данные класса",
+    hint: "Нажмите 'Подробнее' для просмотра оценок",
+    details: "Подробнее",
+    removeBtn: "Удалить из класса"
+  }
+};
 
 interface Props {
   classId: string;
@@ -13,7 +57,12 @@ interface Props {
 }
 
 export default function RosterTab({ classId, studentIds }: Props) {
-  // 🟢 STATE: Only storing profiles and assignment list (Cheap)
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = ROSTER_TRANSLATIONS[lang];
+
+  // STATE: Only storing profiles and assignment list (Cheap)
   const [students, setStudents] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +85,7 @@ export default function RosterTab({ classId, studentIds }: Props) {
             if (snap.exists()) {
               return { uid: snap.id, ...snap.data() };
             } else {
-              return { uid: studentIds[index], displayName: 'Unknown', username: 'deleted', isDeleted: true };
+              return { uid: studentIds[index], displayName: t.unknown, username: t.deleted, isDeleted: true };
             }
           });
           setStudents(loadedStudents);
@@ -50,18 +99,16 @@ export default function RosterTab({ classId, studentIds }: Props) {
         const assignList = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setAssignments(assignList);
 
-        // ❌ REMOVED: Fetch Attempts (This saves the reads!)
-
       } catch (e) { 
         console.error("Error loading roster:", e);
-        toast.error("Could not load class data");
+        toast.error(t.errLoad);
       } finally { 
         setLoading(false); 
       }
     };
 
     fetchData();
-  }, [classId, studentIds]);
+  }, [classId, studentIds, t]); // Added 't' dependency
 
   const handleShowDetails = (student: any) => {
     setSelectedStudent(student);
@@ -69,23 +116,23 @@ export default function RosterTab({ classId, studentIds }: Props) {
   };
 
   const handleRemove = async (studentUid: string) => {
-    if (!confirm("Remove this student from the class?")) return;
+    if (!confirm(t.confirmRemove)) return;
     try {
       await updateDoc(doc(db, 'classes', classId), { 
         studentIds: arrayRemove(studentUid) 
       });
-      toast.success("Student removed");
+      toast.success(t.removed);
       setStudents(prev => prev.filter(s => s.uid !== studentUid));
     } catch (e) { 
       console.error(e);
-      toast.error("Error removing student"); 
+      toast.error(t.errRemove); 
     }
   };
 
-  if (loading) return <div className="py-10 text-center text-slate-400">Loading roster...</div>;
+  if (loading) return <div className="py-10 text-center text-slate-400">{t.loading}</div>;
 
   if (students.length === 0) {
-    return <div className="py-10 text-center text-slate-400 italic">No students in this class yet.</div>;
+    return <div className="py-10 text-center text-slate-400 italic">{t.empty}</div>;
   }
 
   return (
@@ -95,7 +142,7 @@ export default function RosterTab({ classId, studentIds }: Props) {
         onClose={() => setIsDetailsOpen(false)}
         student={selectedStudent}
         assignments={assignments}
-        classId={classId} // 🟢 ADDED: Modal needs this to fetch data itself
+        classId={classId} 
       />
 
       <div className="space-y-3">
@@ -119,10 +166,10 @@ export default function RosterTab({ classId, studentIds }: Props) {
               </div>
             </div>
 
-            {/* Middle: Clean Status (No more expensive badges) */}
+            {/* Middle: Clean Status */}
             <div className="hidden md:flex flex-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                <span className="text-xs font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
-                  Click 'Details' to view grades
+                  {t.hint}
                </span>
             </div>
             
@@ -133,13 +180,13 @@ export default function RosterTab({ classId, studentIds }: Props) {
                 disabled={student.isDeleted} 
                 className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
-                <Eye size={14}/> Details
+                <Eye size={14}/> {t.details}
               </button>
               
               <button 
                 onClick={() => handleRemove(student.uid)} 
                 className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" 
-                title="Remove from class"
+                title={t.removeBtn}
               >
                 <Trash2 size={16} />
               </button>

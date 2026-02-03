@@ -8,6 +8,104 @@ import {
   Copy, AlertTriangle, AlertCircle, Search, X 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const ASSIGN_TAB_TRANSLATIONS = {
+  uz: {
+    emptyTitle: "Hozircha topshiriqlar yo'q",
+    createBtn: "Topshiriq Yaratish",
+    status: {
+      scheduled: "Rejalashtirilgan",
+      active: "Faol",
+      closed: "Yopilgan",
+      due: "Muddat",
+      noDeadline: "Muddat yo'q"
+    },
+    assignees: {
+      all: "Barcha O'quvchilar",
+      count: "{n} ta O'quvchi"
+    },
+    progress: {
+      submitted: "Topshirildi",
+      missing: "Topshirilmagan"
+    },
+    toasts: {
+      deleted: "Topshiriq o'chirildi",
+      failDelete: "O'chirib bo'lmadi",
+      copied: "Havola nusxalandi!"
+    },
+    modals: {
+      deleteTitle: "Topshiriqni o'chirasizmi?",
+      deleteDesc: "Haqiqatan ham \"{title}\"ni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.",
+      cancel: "Bekor qilish",
+      confirmDelete: "Ha, O'chirish",
+      searchPlace: "O'quvchilarni qidirish..."
+    }
+  },
+  en: {
+    emptyTitle: "No assignments yet",
+    createBtn: "Create Assignment",
+    status: {
+      scheduled: "Scheduled",
+      active: "Active",
+      closed: "Closed",
+      due: "Due",
+      noDeadline: "No Deadline"
+    },
+    assignees: {
+      all: "All Students",
+      count: "{n} Assignees"
+    },
+    progress: {
+      submitted: "Submitted",
+      missing: "Missing"
+    },
+    toasts: {
+      deleted: "Assignment deleted",
+      failDelete: "Could not delete",
+      copied: "Link copied!"
+    },
+    modals: {
+      deleteTitle: "Delete Assignment?",
+      deleteDesc: "Are you sure you want to delete \"{title}\"? This cannot be undone.",
+      cancel: "Cancel",
+      confirmDelete: "Yes, Delete",
+      searchPlace: "Search students..."
+    }
+  },
+  ru: {
+    emptyTitle: "Заданий пока нет",
+    createBtn: "Создать Задание",
+    status: {
+      scheduled: "Запланировано",
+      active: "Активно",
+      closed: "Закрыто",
+      due: "Срок",
+      noDeadline: "Без срока"
+    },
+    assignees: {
+      all: "Все Ученики",
+      count: "{n} Учеников"
+    },
+    progress: {
+      submitted: "Сдано",
+      missing: "Отсутствует"
+    },
+    toasts: {
+      deleted: "Задание удалено",
+      failDelete: "Не удалось удалить",
+      copied: "Ссылка скопирована!"
+    },
+    modals: {
+      deleteTitle: "Удалить Задание?",
+      deleteDesc: "Вы уверены, что хотите удалить \"{title}\"? Это действие нельзя отменить.",
+      cancel: "Отмена",
+      confirmDelete: "Да, Удалить",
+      searchPlace: "Поиск учеников..."
+    }
+  }
+};
 
 interface Props {
   classId: string;
@@ -17,6 +115,9 @@ interface Props {
 }
 
 export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: Props) {
+  const { lang } = useTeacherLanguage();
+  const t = ASSIGN_TAB_TRANSLATIONS[lang];
+
   const [assignments, setAssignments] = useState<any[]>([]);
   const [deleteData, setDeleteData] = useState<any>(null);
   const [progressData, setProgressData] = useState<any>(null);
@@ -33,15 +134,15 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
     if (!deleteData) return;
     try {
       await deleteDoc(doc(db, 'classes', classId, 'assignments', deleteData.id));
-      toast.success("Assignment deleted");
+      toast.success(t.toasts.deleted);
       setDeleteData(null);
-    } catch (e) { toast.error("Could not delete"); }
+    } catch (e) { toast.error(t.toasts.failDelete); }
   };
 
   const handleCopyLink = (assignmentId: string) => {
     const link = `${window.location.origin}/classes/${classId}/test/${assignmentId}`;
     navigator.clipboard.writeText(link);
-    toast.success("Link copied!");
+    toast.success(t.toasts.copied);
   };
 
   const openProgress = (assignment: any) => {
@@ -57,9 +158,9 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-300">
                <FileText size={32} />
              </div>
-             <h3 className="text-slate-600 font-bold text-lg">No assignments yet</h3>
+             <h3 className="text-slate-600 font-bold text-lg">{t.emptyTitle}</h3>
              <button onClick={onAdd} className="mt-4 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg flex items-center gap-2">
-               <Plus size={18} /> Create Assignment
+               <Plus size={18} /> {t.createBtn}
              </button>
           </div>
         )}
@@ -102,17 +203,24 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
                          </h3>
                          <span className={`sm:hidden text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                            status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-                         }`}>{status}</span>
+                         }`}>
+                           {/* @ts-ignore */}
+                           {t.status[status]}
+                         </span>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs font-medium text-slate-500">
                         {dueDate ? (
                           <span className={`flex items-center gap-1 ${status === 'closed' ? 'text-red-500' : 'text-slate-500'}`}>
-                             <Calendar size={12}/> {status === 'closed' ? 'Closed' : 'Due'}: {dueDate.toLocaleDateString([], {month: 'short', day: 'numeric'})}
+                             <Calendar size={12}/> {status === 'closed' ? t.status.closed : t.status.due}: {dueDate.toLocaleDateString([], {month: 'short', day: 'numeric'})}
                           </span>
-                        ) : <span className="text-green-600">No Deadline</span>}
+                        ) : <span className="text-green-600">{t.status.noDeadline}</span>}
                         <span className="text-slate-300">|</span>
-                        <span>{Array.isArray(a.assignedTo) ? `${a.assignedTo.length} Assignees` : 'All Students'}</span>
+                        <span>
+                          {Array.isArray(a.assignedTo) 
+                            ? t.assignees.count.replace("{n}", a.assignedTo.length.toString()) 
+                            : t.assignees.all}
+                        </span>
                       </div>
 
                       {/* PROGRESS BAR */}
@@ -122,7 +230,7 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
                       >
                          <div className="flex justify-between text-xs font-bold mb-1">
                             <span className="text-slate-600 group-hover/progress:text-indigo-600 flex items-center gap-1">
-                               <Users size={12}/> {submittedCount}/{totalRequired} Submitted
+                               <Users size={12}/> {submittedCount}/{totalRequired} {t.progress.submitted}
                             </span>
                             <span className="text-slate-400 group-hover/progress:text-indigo-600">{percent}%</span>
                          </div>
@@ -156,13 +264,13 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 mx-auto">
                <AlertTriangle size={24} />
              </div>
-             <h3 className="text-lg font-black text-slate-800 text-center mb-2">Delete Assignment?</h3>
+             <h3 className="text-lg font-black text-slate-800 text-center mb-2">{t.modals.deleteTitle}</h3>
              <p className="text-sm text-slate-500 text-center mb-6">
-               Are you sure you want to delete <strong>"{deleteData.testTitle}"</strong>? This cannot be undone.
+               {t.modals.deleteDesc.replace("{title}", deleteData.testTitle)}
              </p>
              <div className="flex gap-3">
-               <button onClick={() => setDeleteData(null)} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-               <button onClick={handleDeleteConfirm} className="flex-1 py-3 font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-200">Yes, Delete</button>
+               <button onClick={() => setDeleteData(null)} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-100 rounded-xl">{t.modals.cancel}</button>
+               <button onClick={handleDeleteConfirm} className="flex-1 py-3 font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-200">{t.modals.confirmDelete}</button>
              </div>
           </div>
         </div>
@@ -179,7 +287,7 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
              <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 <div className="relative mb-4">
                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-                   <input disabled placeholder="Search students..." className="w-full pl-9 py-2 text-sm bg-slate-100 rounded-lg border-transparent focus:bg-white focus:ring-2 ring-indigo-500 outline-none transition-all"/>
+                   <input disabled placeholder={t.modals.searchPlace} className="w-full pl-9 py-2 text-sm bg-slate-100 rounded-lg border-transparent focus:bg-white focus:ring-2 ring-indigo-500 outline-none transition-all"/>
                 </div>
 
                 {roster.map(student => {
@@ -198,9 +306,9 @@ export default function AssignmentsTab({ classId, roster = [], onEdit, onAdd }: 
                             <p className="text-sm font-bold text-slate-700">{student.displayName}</p>
                          </div>
                          {hasSubmitted ? (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Submitted</span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">{t.progress.submitted}</span>
                          ) : (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full">Missing</span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full">{t.progress.missing}</span>
                          )}
                       </div>
                    );

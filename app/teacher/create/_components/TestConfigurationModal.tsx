@@ -2,12 +2,121 @@
 
 import { useState } from 'react';
 import { X, Clock, Shuffle, Eye, Lock, CheckCircle, Shield, CalendarClock, EyeOff } from 'lucide-react';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const CONFIG_TRANSLATIONS = {
+  uz: {
+    title: "Yakunlash va Nashr Qilish",
+    subtitle: "\"{title}\" uchun xavfsizlik sozlamalari.",
+    timeLimit: {
+      title: "Vaqt Cheklovi",
+      noLimit: "Cheklovsiz",
+      fixed: "Belgilangan Vaqt",
+      mins: "DAQ"
+    },
+    shuffle: {
+      title: "Savollarni Aralashtirish",
+      desc: "Har bir o'quvchi uchun tartibni o'zgartirish"
+    },
+    security: {
+      title: "Javoblar Xavfsizligi",
+      afterDue: {
+        title: "Muddatdan keyin ko'rsatish",
+        desc: "O'quvchilar javoblarni faqat muddat tugagandan so'ng ko'rishadi."
+      },
+      never: {
+        title: "Hech qachon ko'rsatilmasin",
+        desc: "Qat'iy rejim. O'quvchilar faqat yakuniy ballni ko'rishadi."
+      },
+      always: {
+        title: "Darhol ko'rsatish",
+        desc: "Javoblar topshirilgandan so'ng darhol ochiladi."
+      }
+    },
+    accessCode: "Kirish Kodi",
+    buttons: {
+      cancel: "Bekor qilish",
+      publishing: "Nashr qilinmoqda...",
+      confirm: "Tasdiqlash va Nashr Qilish"
+    }
+  },
+  en: {
+    title: "Finalize & Publish",
+    subtitle: "Configure security for \"{title}\".",
+    timeLimit: {
+      title: "Time Limit",
+      noLimit: "No Limit",
+      fixed: "Fixed Time",
+      mins: "MINS"
+    },
+    shuffle: {
+      title: "Shuffle Questions",
+      desc: "Randomize order for every student"
+    },
+    security: {
+      title: "Answer Key Security",
+      afterDue: {
+        title: "Show After Deadline",
+        desc: "Students see answers only after the due date passes."
+      },
+      never: {
+        title: "Never Show Answers",
+        desc: "Strict mode. Students only see their final score."
+      },
+      always: {
+        title: "Show Immediately",
+        desc: "Answers revealed right after submission."
+      }
+    },
+    accessCode: "Access Code",
+    buttons: {
+      cancel: "Cancel",
+      publishing: "Publishing...",
+      confirm: "Confirm & Publish"
+    }
+  },
+  ru: {
+    title: "Завершить и Опубликовать",
+    subtitle: "Настройки безопасности для \"{title}\".",
+    timeLimit: {
+      title: "Ограничение времени",
+      noLimit: "Без лимита",
+      fixed: "Фиксированное",
+      mins: "МИН"
+    },
+    shuffle: {
+      title: "Перемешать вопросы",
+      desc: "Случайный порядок для каждого ученика"
+    },
+    security: {
+      title: "Безопасность ответов",
+      afterDue: {
+        title: "Показать после срока",
+        desc: "Ученики увидят ответы только после истечения срока сдачи."
+      },
+      never: {
+        title: "Никогда не показывать",
+        desc: "Строгий режим. Ученики видят только итоговый балл."
+      },
+      always: {
+        title: "Показать сразу",
+        desc: "Ответы открываются сразу после сдачи."
+      }
+    },
+    accessCode: "Код Доступа",
+    buttons: {
+      cancel: "Отмена",
+      publishing: "Публикация...",
+      confirm: "Подтвердить и Опубликовать"
+    }
+  }
+};
 
 // --- UPDATED INTERFACE ---
 interface TestSettings {
   duration: number; 
   shuffleQuestions: boolean;
-  // 👇 CHANGED: From boolean to strict string options
   resultsVisibility: 'always' | 'after_due' | 'never'; 
   accessCode: string;
 }
@@ -24,11 +133,14 @@ interface Props {
 export default function TestConfigurationModal({ 
   isOpen, onClose, onConfirm, questionCount, testTitle, isSaving 
 }: Props) {
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = CONFIG_TRANSLATIONS[lang];
+
   const [duration, setDuration] = useState<number>(45);
   const [isTimeLimited, setIsTimeLimited] = useState(true);
   const [shuffle, setShuffle] = useState(true);
-  
-  // 👇 NEW STATE: Default to 'after_due' (Best balance of learning & security)
   const [visibility, setVisibility] = useState<'always' | 'after_due' | 'never'>('after_due');
   
   const [accessCode] = useState(() => {
@@ -44,7 +156,7 @@ export default function TestConfigurationModal({
     onConfirm({
       duration: isTimeLimited ? duration : 0,
       shuffleQuestions: shuffle,
-      resultsVisibility: visibility, // Pass the new setting
+      resultsVisibility: visibility, 
       accessCode: accessCode
     });
   };
@@ -58,8 +170,10 @@ export default function TestConfigurationModal({
         {/* HEADER */}
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">
           <div>
-            <h2 className="text-xl font-black text-slate-900">Finalize & Publish</h2>
-            <p className="text-sm text-slate-500 mt-1">Configure security for <strong>"{testTitle}"</strong>.</p>
+            <h2 className="text-xl font-black text-slate-900">{t.title}</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              {t.subtitle.replace("{title}", testTitle)}
+            </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
         </div>
@@ -69,21 +183,21 @@ export default function TestConfigurationModal({
           {/* 1. TIME LIMIT */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-              <Clock size={16} className="text-indigo-600" /> Time Limit
+              <Clock size={16} className="text-indigo-600" /> {t.timeLimit.title}
             </div>
             <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" checked={!isTimeLimited} onChange={() => setIsTimeLimited(false)} className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"/>
-                <span className="text-sm font-medium text-slate-700">No Limit</span>
+                <span className="text-sm font-medium text-slate-700">{t.timeLimit.noLimit}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" checked={isTimeLimited} onChange={() => setIsTimeLimited(true)} className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"/>
-                <span className="text-sm font-medium text-slate-700">Fixed Time</span>
+                <span className="text-sm font-medium text-slate-700">{t.timeLimit.fixed}</span>
               </label>
               {isTimeLimited && (
                 <div className="flex items-center gap-2 ml-auto animate-in fade-in">
                   <input type="number" min="5" max="180" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-16 px-2 py-1 text-center font-bold border border-slate-300 rounded-lg text-sm focus:border-indigo-500 outline-none"/>
-                  <span className="text-xs font-bold text-slate-400">MINS</span>
+                  <span className="text-xs font-bold text-slate-400">{t.timeLimit.mins}</span>
                 </div>
               )}
             </div>
@@ -95,22 +209,22 @@ export default function TestConfigurationModal({
             onClick={() => setShuffle(!shuffle)}
           >
             <div>
-              <p className={`text-sm font-bold ${shuffle ? 'text-indigo-900' : 'text-slate-700'}`}>Shuffle Questions</p>
-              <p className="text-xs text-slate-500">Randomize order for every student</p>
+              <p className={`text-sm font-bold ${shuffle ? 'text-indigo-900' : 'text-slate-700'}`}>{t.shuffle.title}</p>
+              <p className="text-xs text-slate-500">{t.shuffle.desc}</p>
             </div>
             <div className={`p-2 rounded-full ${shuffle ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400'}`}>
               <Shuffle size={18} />
             </div>
           </div>
 
-          {/* 3. ANSWER VISIBILITY (THE SECURITY FIX) */}
+          {/* 3. ANSWER VISIBILITY */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-              <Shield size={16} className="text-indigo-600" /> Answer Key Security
+              <Shield size={16} className="text-indigo-600" /> {t.security.title}
             </div>
             <div className="grid grid-cols-1 gap-2">
               
-              {/* Option A: After Deadline (Recommended) */}
+              {/* Option A: After Deadline */}
               <div 
                 onClick={() => setVisibility('after_due')}
                 className={`p-3 rounded-xl border-2 cursor-pointer flex items-center gap-3 transition-all ${visibility === 'after_due' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'}`}
@@ -119,13 +233,13 @@ export default function TestConfigurationModal({
                   <CalendarClock size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">Show After Deadline</p>
-                  <p className="text-xs text-slate-500">Students see answers only after the due date passes.</p>
+                  <p className="text-sm font-bold text-slate-800">{t.security.afterDue.title}</p>
+                  <p className="text-xs text-slate-500">{t.security.afterDue.desc}</p>
                 </div>
                 {visibility === 'after_due' && <CheckCircle size={18} className="text-emerald-500 ml-auto" />}
               </div>
 
-              {/* Option B: Never (Strict) */}
+              {/* Option B: Never */}
               <div 
                 onClick={() => setVisibility('never')}
                 className={`p-3 rounded-xl border-2 cursor-pointer flex items-center gap-3 transition-all ${visibility === 'never' ? 'border-slate-600 bg-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
@@ -134,13 +248,13 @@ export default function TestConfigurationModal({
                   <EyeOff size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">Never Show Answers</p>
-                  <p className="text-xs text-slate-500">Strict mode. Students only see their final score.</p>
+                  <p className="text-sm font-bold text-slate-800">{t.security.never.title}</p>
+                  <p className="text-xs text-slate-500">{t.security.never.desc}</p>
                 </div>
                 {visibility === 'never' && <CheckCircle size={18} className="text-slate-600 ml-auto" />}
               </div>
 
-              {/* Option C: Always (Open) */}
+              {/* Option C: Always */}
               <div 
                 onClick={() => setVisibility('always')}
                 className={`p-3 rounded-xl border-2 cursor-pointer flex items-center gap-3 transition-all ${visibility === 'always' ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-slate-300'}`}
@@ -149,8 +263,8 @@ export default function TestConfigurationModal({
                   <Eye size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">Show Immediately</p>
-                  <p className="text-xs text-slate-500">Answers revealed right after submission.</p>
+                  <p className="text-sm font-bold text-slate-800">{t.security.always.title}</p>
+                  <p className="text-xs text-slate-500">{t.security.always.desc}</p>
                 </div>
                 {visibility === 'always' && <CheckCircle size={18} className="text-amber-500 ml-auto" />}
               </div>
@@ -161,7 +275,7 @@ export default function TestConfigurationModal({
           {/* 4. ACCESS CODE */}
           <div className="bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Access Code</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{t.accessCode}</p>
               <p className="text-2xl font-mono font-black tracking-widest text-indigo-400">{accessCode}</p>
             </div>
             <Lock size={24} className="text-slate-600" />
@@ -171,9 +285,9 @@ export default function TestConfigurationModal({
 
         {/* FOOTER */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-5 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-5 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">{t.buttons.cancel}</button>
           <button onClick={handlePublish} disabled={isSaving} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-            {isSaving ? 'Publishing...' : 'Confirm & Publish'}
+            {isSaving ? t.buttons.publishing : t.buttons.confirm}
             {!isSaving && <CheckCircle size={18} />}
           </button>
         </div>

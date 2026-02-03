@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-// 1. Import deleteDoc
 import { collection, query, where, orderBy, onSnapshot, doc, writeBatch, limit, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { 
@@ -10,11 +9,59 @@ import {
   Trash2, AlertTriangle, FileText
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const NOTIFICATIONS_TRANSLATIONS = {
+  uz: {
+    title: "Xabarnomalar",
+    subtitle: "O'quvchilar va topshiriqlar bo'yicha yangiliklar",
+    dismiss: "Yangi xabarlarni o'chirish",
+    clear: "Tarixni tozalash",
+    emptyTitle: "Yangi xabarlar yo'q",
+    emptyDesc: "O'quvchi so'rovlari va test natijalari shu yerda paydo bo'ladi.",
+    new: "YANGI",
+    loading: "Xabarlar yuklanmoqda...",
+    justNow: "Hozirgina",
+    view: "Batafsil ko'rish",
+    confirmClear: "Barcha xabarnomalarni o'chirasizmi? Bu amalni qaytarib bo'lmaydi."
+  },
+  en: {
+    title: "Notifications",
+    subtitle: "Updates on students & submissions",
+    dismiss: "Dismiss New",
+    clear: "Clear History",
+    emptyTitle: "No new alerts",
+    emptyDesc: "Student requests and test submissions will appear here.",
+    new: "NEW",
+    loading: "Loading inbox...",
+    justNow: "Just now",
+    view: "View Details",
+    confirmClear: "Clear all notifications? This cannot be undone."
+  },
+  ru: {
+    title: "Уведомления",
+    subtitle: "Обновления по ученикам и заданиям",
+    dismiss: "Скрыть новые",
+    clear: "Очистить историю",
+    emptyTitle: "Нет новых оповещений",
+    emptyDesc: "Запросы учеников и сданные тесты появятся здесь.",
+    new: "НОВОЕ",
+    loading: "Загрузка...",
+    justNow: "Только что",
+    view: "Подробнее",
+    confirmClear: "Очистить все уведомления? Это действие нельзя отменить."
+  }
+};
 
 export default function TeacherNotificationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = NOTIFICATIONS_TRANSLATIONS[lang];
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +69,6 @@ export default function TeacherNotificationsPage() {
   useEffect(() => {
     if (!user) return;
     
-    // Query: Get notifications sent specifically to ME (The Teacher)
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', user.uid),
@@ -40,13 +86,8 @@ export default function TeacherNotificationsPage() {
   }, [user]);
 
   // 2. ACTIONS
-  
-  // 🟢 MODIFIED: Delete immediately when clicked
   const handleRead = async (id: string, link?: string) => {
-    // If there is a link, go there immediately
     if (link) router.push(link);
-    
-    // Instead of marking as read, we DELETE it
     try {
       await deleteDoc(doc(db, 'notifications', id));
     } catch (e) { 
@@ -54,13 +95,11 @@ export default function TeacherNotificationsPage() {
     }
   };
 
-  // 🟢 MODIFIED: Delete all UNREAD items when "Dismiss New" is clicked
   const markAllRead = async () => {
     const batch = writeBatch(db);
     let hasUpdates = false;
 
     notifications.forEach(n => {
-      // If it's new (unread), we assume "Dismiss" means remove it
       if (!n.read) {
         batch.delete(doc(db, 'notifications', n.id));
         hasUpdates = true;
@@ -73,7 +112,7 @@ export default function TeacherNotificationsPage() {
   };
 
   const clearAll = async () => {
-    if (!confirm("Clear all notifications? This cannot be undone.")) return;
+    if (!confirm(t.confirmClear)) return;
     const batch = writeBatch(db);
     notifications.forEach(n => {
       batch.delete(doc(db, 'notifications', n.id));
@@ -93,12 +132,12 @@ export default function TeacherNotificationsPage() {
   };
 
   const getTimeString = (timestamp: any) => {
-    if (!timestamp) return 'Just now';
+    if (!timestamp) return t.justNow;
     const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-400 font-medium">Loading inbox...</div>;
+  if (loading) return <div className="p-12 text-center text-slate-400 font-medium">{t.loading}</div>;
 
   return (
     <div className="max-w-4xl mx-auto pb-20">
@@ -106,8 +145,8 @@ export default function TeacherNotificationsPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 animate-in fade-in slide-in-from-top-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Notifications</h1>
-          <p className="text-slate-500 font-medium mt-1">Updates on students & submissions</p>
+          <h1 className="text-3xl font-black text-slate-900">{t.title}</h1>
+          <p className="text-slate-500 font-medium mt-1">{t.subtitle}</p>
         </div>
         
         <div className="flex gap-2">
@@ -117,7 +156,7 @@ export default function TeacherNotificationsPage() {
              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors"
              title="Dismiss all new notifications"
            >
-             <Check size={16} /> Dismiss New
+             <Check size={16} /> {t.dismiss}
            </button>
            <button 
              onClick={clearAll} 
@@ -137,8 +176,8 @@ export default function TeacherNotificationsPage() {
               <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Bell size={40} />
               </div>
-              <h3 className="text-slate-900 font-bold text-lg">No new alerts</h3>
-              <p className="text-slate-500 text-sm mt-1">Student requests and test submissions will appear here.</p>
+              <h3 className="text-slate-900 font-bold text-lg">{t.emptyTitle}</h3>
+              <p className="text-slate-500 text-sm mt-1">{t.emptyDesc}</p>
            </div>
         ) : (
           notifications.map((n) => (
@@ -150,7 +189,7 @@ export default function TeacherNotificationsPage() {
               {/* "New" Badge */}
               {!n.read && (
                 <span className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm shadow-indigo-200">
-                  NEW
+                  {t.new}
                 </span>
               )}
 
@@ -175,7 +214,7 @@ export default function TeacherNotificationsPage() {
                       </span>
                       {n.link && (
                         <span className="text-indigo-500 group-hover:underline flex items-center gap-1">
-                          View Details
+                          {t.view}
                         </span>
                       )}
                    </div>

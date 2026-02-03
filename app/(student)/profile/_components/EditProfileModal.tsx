@@ -21,6 +21,182 @@ import {
   reauthenticateWithPopup 
 } from 'firebase/auth';
 import toast from 'react-hot-toast';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const EDIT_MODAL_TRANSLATIONS = {
+  uz: {
+    title: "Profilni Tahrirlash",
+    tabs: {
+      profile: "Ommaviy Profil",
+      account: "Hisob",
+      security: "Xavfsizlik"
+    },
+    labels: {
+      fullName: "To'liq Ism (F.I.O)",
+      birthDate: "Tug'ilgan Sana",
+      bio: "O'zingiz haqingizda",
+      region: "Viloyat",
+      district: "Tuman",
+      selectRegion: "Viloyatni tanlang",
+      selectDistrict: "Tumanni tanlang",
+      school: "Maktab / Universitet",
+      schoolPlace: "Muassasa nomi",
+      username: "Foydalanuvchi nomi",
+      phone: "Telefon raqami",
+      email: "Email"
+    },
+    status: {
+      minChar: "Kamida 5 ta belgi",
+      regex: "Harf bilan boshlang (a-z, 0-9, _)",
+      taken: "Bu nom band qilingan",
+      avail: "Bu nom bo'sh!"
+    },
+    security: {
+      warn: "Parolni o'zgartirish qayta kirishni talab qiladi.",
+      googleWarn: "Siz Google orqali kirdingiz. Parol kerak emas.",
+      current: "Joriy Parol",
+      new: "Yangi Parol",
+      confirm: "Tasdiqlash",
+      updateBtn: "Parolni Yangilash",
+      danger: "Xavfli Hudud",
+      deleteTitle: "Hisobni O'chirish",
+      deleteDesc: "Hisob o'chirilgach, uni qayta tiklab bo'lmaydi.",
+      deleteBtn: "O'chirish",
+      sureTitle: "Haqiqatan ham ishonchingiz komilmi?",
+      sureDesc: "Bu amal hisobingizni, barcha yutuqlar, tarix va ma'lumotlarni butunlay o'chirib tashlaydi.",
+      passPlace: "Tasdiqlash uchun parolni kiriting",
+      cancel: "Bekor qilish",
+      yesDelete: "Ha, Hisobimni O'chirish"
+    },
+    footer: {
+      cancel: "Bekor qilish",
+      save: "Saqlash"
+    },
+    toasts: {
+      passReq: "Iltimos, parolni kiriting",
+      clean: "Ma'lumotlar tozalanmoqda...",
+      deleted: "Hisob butunlay o'chirildi.",
+      wrongPass: "Noto'g'ri parol.",
+      popupClosed: "Tasdiqlash bekor qilindi",
+      delFail: "Hisobni o'chirishda xatolik."
+    }
+  },
+  en: {
+    title: "Edit Profile",
+    tabs: {
+      profile: "Public Profile",
+      account: "Account",
+      security: "Security"
+    },
+    labels: {
+      fullName: "Full Name",
+      birthDate: "Date of Birth",
+      bio: "Bio",
+      region: "Region",
+      district: "District",
+      selectRegion: "Select Region",
+      selectDistrict: "Select District",
+      school: "School / University",
+      schoolPlace: "School Name",
+      username: "Username",
+      phone: "Phone",
+      email: "Email"
+    },
+    status: {
+      minChar: "Minimum 5 characters",
+      regex: "Start with letter, use a-z, 0-9, _",
+      taken: "Username is already taken",
+      avail: "Username is available!"
+    },
+    security: {
+      warn: "Changing password requires re-login.",
+      googleWarn: "You are logged in with Google. You don't need a password.",
+      current: "Current Password",
+      new: "New Password",
+      confirm: "Confirm Password",
+      updateBtn: "Update Password",
+      danger: "Danger Zone",
+      deleteTitle: "Delete Account",
+      deleteDesc: "Once you delete your account, there is no going back.",
+      deleteBtn: "Delete",
+      sureTitle: "Are you absolutely sure?",
+      sureDesc: "This action will permanently delete your account, including all progress, history, and profile data.",
+      passPlace: "Enter your password to confirm",
+      cancel: "Cancel",
+      yesDelete: "Yes, Delete My Account"
+    },
+    footer: {
+      cancel: "Cancel",
+      save: "Save Changes"
+    },
+    toasts: {
+      passReq: "Please enter your password",
+      clean: "Cleaning up data...",
+      deleted: "Account permanently deleted.",
+      wrongPass: "Incorrect password.",
+      popupClosed: "Verification cancelled",
+      delFail: "Failed to delete account."
+    }
+  },
+  ru: {
+    title: "Редактировать Профиль",
+    tabs: {
+      profile: "Профиль",
+      account: "Аккаунт",
+      security: "Безопасность"
+    },
+    labels: {
+      fullName: "Полное Имя",
+      birthDate: "Дата Рождения",
+      bio: "О себе",
+      region: "Регион",
+      district: "Район",
+      selectRegion: "Выберите регион",
+      selectDistrict: "Выберите район",
+      school: "Школа / ВУЗ",
+      schoolPlace: "Название учреждения",
+      username: "Имя пользователя",
+      phone: "Телефон",
+      email: "Эл. почта"
+    },
+    status: {
+      minChar: "Минимум 5 символов",
+      regex: "Начинайте с буквы (a-z, 0-9, _)",
+      taken: "Имя уже занято",
+      avail: "Имя доступно!"
+    },
+    security: {
+      warn: "Смена пароля требует повторного входа.",
+      googleWarn: "Вы вошли через Google. Пароль не нужен.",
+      current: "Текущий пароль",
+      new: "Новый пароль",
+      confirm: "Подтвердите пароль",
+      updateBtn: "Обновить Пароль",
+      danger: "Опасная Зона",
+      deleteTitle: "Удалить Аккаунт",
+      deleteDesc: "После удаления аккаунта пути назад нет.",
+      deleteBtn: "Удалить",
+      sureTitle: "Вы абсолютно уверены?",
+      sureDesc: "Это действие навсегда удалит ваш аккаунт, включая прогресс, историю и данные профиля.",
+      passPlace: "Введите пароль для подтверждения",
+      cancel: "Отмена",
+      yesDelete: "Да, Удалить Мой Аккаунт"
+    },
+    footer: {
+      cancel: "Отмена",
+      save: "Сохранить"
+    },
+    toasts: {
+      passReq: "Пожалуйста, введите пароль",
+      clean: "Очистка данных...",
+      deleted: "Аккаунт удален навсегда.",
+      wrongPass: "Неверный пароль.",
+      popupClosed: "Проверка отменена",
+      delFail: "Не удалось удалить аккаунт."
+    }
+  }
+};
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -69,6 +245,10 @@ export default function EditProfileModal({
   const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'security'>('profile');
   const [formData, setFormData] = useState(initialData);
   
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = EDIT_MODAL_TRANSLATIONS[lang];
+
   // Security State
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -83,7 +263,7 @@ export default function EditProfileModal({
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'valid' | 'taken' | 'invalid'>('idle');
   const [usernameError, setUsernameError] = useState('');
 
-  // 🟢 CHECK GOOGLE USER
+  // CHECK GOOGLE USER
   const isGoogleUser = auth.currentUser?.providerData.some(p => p.providerId === 'google.com');
 
   useEffect(() => {
@@ -103,12 +283,12 @@ export default function EditProfileModal({
 
     if (input.length < 5) {
       setUsernameStatus('invalid');
-      setUsernameError('Minimum 5 characters');
+      setUsernameError(t.status.minChar);
       return;
     }
     if (!USERNAME_REGEX.test(input)) {
       setUsernameStatus('invalid');
-      setUsernameError('Start with letter, use a-z, 0-9, _');
+      setUsernameError(t.status.regex);
       return;
     }
 
@@ -127,7 +307,7 @@ export default function EditProfileModal({
           setUsernameError('');
         } else {
           setUsernameStatus('taken');
-          setUsernameError('Username is already taken');
+          setUsernameError(t.status.taken);
         }
       } catch (error) {
         console.error(error);
@@ -136,7 +316,7 @@ export default function EditProfileModal({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [formData.username, userData?.username]);
+  }, [formData.username, userData?.username, t]);
 
   const handleSaveClick = () => onSave(formData);
 
@@ -146,27 +326,25 @@ export default function EditProfileModal({
     setCurrentPass(''); setNewPass(''); setConfirmPass('');
   };
 
-  // --- DELETE ACCOUNT LOGIC (UPDATED) ---
+  // --- DELETE ACCOUNT LOGIC ---
   const handleDeleteAccount = async () => {
     const user = auth.currentUser;
     if (!user) return;
     
     // Manual users need password
     if (!isGoogleUser && !deletePassword) {
-      toast.error("Please enter your password");
+      toast.error(t.toasts.passReq);
       return;
     }
 
     setIsDeleting(true);
-    const toastId = toast.loading("Cleaning up data...");
+    const toastId = toast.loading(t.toasts.clean);
 
     try {
       // 1. RE-AUTHENTICATE
       if (isGoogleUser) {
-        // Google: Popup
         await reauthenticateWithPopup(user, new GoogleAuthProvider());
       } else {
-        // Email: Password
         const credential = EmailAuthProvider.credential(user.email!, deletePassword);
         await reauthenticateWithCredential(user, credential);
       }
@@ -203,18 +381,17 @@ export default function EditProfileModal({
       // 4. DELETE USER
       await deleteUser(user);
 
-      toast.success("Account permanently deleted.", { id: toastId });
-      // Redirect handled by onAuthStateChanged in parent or use window.location
+      toast.success(t.toasts.deleted, { id: toastId });
       window.location.href = '/auth/login';
 
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/wrong-password') {
-        toast.error("Incorrect password.", { id: toastId });
+        toast.error(t.toasts.wrongPass, { id: toastId });
       } else if (error.code === 'auth/popup-closed-by-user') {
-        toast.error("Verification cancelled", { id: toastId });
+        toast.error(t.toasts.popupClosed, { id: toastId });
       } else {
-        toast.error("Failed to delete account.", { id: toastId });
+        toast.error(t.toasts.delFail, { id: toastId });
       }
     } finally {
       setIsDeleting(false);
@@ -234,7 +411,7 @@ export default function EditProfileModal({
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-          <h2 className="text-lg font-bold text-white">Edit Profile</h2>
+          <h2 className="text-lg font-bold text-white">{t.title}</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white">
             <X size={20}/>
           </button>
@@ -248,7 +425,8 @@ export default function EditProfileModal({
               onClick={() => setActiveTab(tab as any)}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors uppercase tracking-wide ${activeTab === tab ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-white'}`}
             >
-              {tab === 'profile' ? 'Public Profile' : tab === 'account' ? 'Account' : 'Security'}
+              {/* @ts-ignore */}
+              {t.tabs[tab]}
             </button>
           ))}
         </div>
@@ -258,17 +436,16 @@ export default function EditProfileModal({
           {activeTab === 'profile' && (
             <div className="space-y-5">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Full Name</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.fullName}</label>
                 <input 
                   type="text" value={formData.displayName} onChange={(e) => setFormData({...formData, displayName: e.target.value})} 
                   className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none"
                 />
               </div>
               
-              {/* 🟢 ADDED BIRTHDATE EDITING */}
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
-                  <Calendar size={14} /> Date of Birth
+                  <Calendar size={14} /> {t.labels.birthDate}
                 </label>
                 <input 
                   type="date" 
@@ -280,7 +457,7 @@ export default function EditProfileModal({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Bio</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.bio}</label>
                 <textarea 
                   value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})} rows={3} 
                   className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none resize-none"
@@ -288,34 +465,34 @@ export default function EditProfileModal({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Region</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.region}</label>
                   <select
                     value={formData.region}
                     onChange={(e) => setFormData({...formData, region: e.target.value, district: ''})}
                     className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none"
                   >
-                    <option value="">Select Region</option>
+                    <option value="">{t.labels.selectRegion}</option>
                     {Object.keys(UZB_LOCATIONS).map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">District</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.district}</label>
                   <select
                     value={formData.district}
                     onChange={(e) => setFormData({...formData, district: e.target.value})}
                     disabled={!formData.region}
                     className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none disabled:opacity-50"
                   >
-                    <option value="">Select District</option>
+                    <option value="">{t.labels.selectDistrict}</option>
                     {formData.region && UZB_LOCATIONS[formData.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">School / University</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.school}</label>
                 <input 
                   type="text" value={formData.institution} onChange={(e) => setFormData({...formData, institution: e.target.value})} 
-                  className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none" placeholder="School Name"
+                  className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white focus:border-indigo-500 outline-none" placeholder={t.labels.schoolPlace}
                 />
               </div>
             </div>
@@ -324,7 +501,7 @@ export default function EditProfileModal({
           {activeTab === 'account' && (
             <div className="space-y-5">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Username</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.username}</label>
                 <div className="relative">
                   <AtSign className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input
@@ -344,14 +521,14 @@ export default function EditProfileModal({
                   </div>
                 </div>
                 {usernameStatus === 'invalid' && <p className="text-xs text-rose-400 mt-1.5 ml-1 font-medium">{usernameError}</p>}
-                {usernameStatus === 'taken' && <p className="text-xs text-rose-400 mt-1.5 ml-1 font-medium">Username is already taken.</p>}
+                {usernameStatus === 'taken' && <p className="text-xs text-rose-400 mt-1.5 ml-1 font-medium">{usernameError}</p>}
                 {usernameStatus === 'valid' && formData.username !== userData.username && (
-                   <p className="text-xs text-emerald-400 mt-1.5 ml-1 font-medium">Username is available!</p>
+                   <p className="text-xs text-emerald-400 mt-1.5 ml-1 font-medium">{t.status.avail}</p>
                 )}
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Phone</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.phone}</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input
@@ -364,7 +541,7 @@ export default function EditProfileModal({
               </div>
               
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Email</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">{t.labels.email}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input type="text" value={userData.email} disabled className="w-full pl-10 p-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-500 cursor-not-allowed"/>
@@ -376,58 +553,56 @@ export default function EditProfileModal({
           {activeTab === 'security' && (
              <div className="space-y-6">
                
-               {/* 🟢 HIDE PASSWORD UPDATE FOR GOOGLE USERS */}
                {!isGoogleUser && (
                  <div className="space-y-4">
                    <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl flex gap-3 text-orange-400 text-sm">
                       <AlertCircle size={20} className="shrink-0" />
-                      <p>Changing password requires re-login.</p>
+                      <p>{t.security.warn}</p>
                    </div>
-                   <input type="password" placeholder="Current Password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
-                   <input type="password" placeholder="New Password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
-                   <input type="password" placeholder="Confirm Password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
-                   <button onClick={handlePasswordClick} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition shadow-lg">Update Password</button>
+                   <input type="password" placeholder={t.security.current} value={currentPass} onChange={e => setCurrentPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
+                   <input type="password" placeholder={t.security.new} value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
+                   <input type="password" placeholder={t.security.confirm} value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full p-3 rounded-xl border border-slate-600 bg-slate-700/50 text-white outline-none"/>
+                   <button onClick={handlePasswordClick} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition shadow-lg">{t.security.updateBtn}</button>
                  </div>
                )}
 
                {isGoogleUser && (
                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-3 text-blue-400 text-sm">
                     <CheckCircle size={20} className="shrink-0" />
-                    <p>You are logged in with Google. You don't need a password.</p>
+                    <p>{t.security.googleWarn}</p>
                  </div>
                )}
 
                {/* DANGER ZONE - DELETE ACCOUNT */}
                <div className="pt-6 border-t border-slate-700">
                   <h3 className="text-red-400 font-bold text-sm mb-2 flex items-center gap-2">
-                    <AlertTriangle size={16}/> Danger Zone
+                    <AlertTriangle size={16}/> {t.security.danger}
                   </h3>
                   
                   {!showDeleteConfirm ? (
                     <div className="flex items-center justify-between p-4 border border-red-500/30 bg-red-500/5 rounded-xl">
                       <div className="text-xs text-slate-400">
-                        <p className="font-bold text-slate-300">Delete Account</p>
-                        <p>Once you delete your account, there is no going back.</p>
+                        <p className="font-bold text-slate-300">{t.security.deleteTitle}</p>
+                        <p>{t.security.deleteDesc}</p>
                       </div>
                       <button 
                         onClick={() => setShowDeleteConfirm(true)}
                         className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold rounded-lg border border-red-500/50 transition-colors"
                       >
-                        Delete
+                        {t.security.deleteBtn}
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-3 p-4 border border-red-500/50 bg-red-500/10 rounded-xl animate-in fade-in zoom-in-95">
-                      <p className="text-sm font-bold text-red-200">Are you absolutely sure?</p>
+                      <p className="text-sm font-bold text-red-200">{t.security.sureTitle}</p>
                       <p className="text-xs text-red-300/80">
-                        This action will permanently delete your account, including all progress, history, and profile data.
+                        {t.security.sureDesc}
                       </p>
                       
-                      {/* 🟢 CONDITIONAL INPUT */}
                       {!isGoogleUser && (
                         <input 
                           type="password" 
-                          placeholder="Enter your password to confirm"
+                          placeholder={t.security.passPlace}
                           value={deletePassword}
                           onChange={(e) => setDeletePassword(e.target.value)}
                           className="w-full p-3 rounded-lg border border-red-500/30 bg-slate-900/50 text-white text-sm outline-none focus:border-red-500"
@@ -439,7 +614,7 @@ export default function EditProfileModal({
                            onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }}
                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg"
                          >
-                           Cancel
+                           {t.security.cancel}
                          </button>
                          <button 
                            onClick={handleDeleteAccount}
@@ -447,7 +622,7 @@ export default function EditProfileModal({
                            className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                          >
                            {isDeleting ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
-                           Yes, Delete My Account
+                           {t.security.yesDelete}
                          </button>
                       </div>
                     </div>
@@ -459,7 +634,7 @@ export default function EditProfileModal({
         
         {/* Footer */}
         <div className="p-5 border-t border-slate-700 bg-slate-900/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-5 py-2 text-slate-400 font-bold hover:text-white transition">Cancel</button>
+          <button onClick={onClose} className="px-5 py-2 text-slate-400 font-bold hover:text-white transition">{t.footer.cancel}</button>
           {activeTab !== 'security' && (
             <button
               onClick={handleSaveClick}
@@ -467,7 +642,7 @@ export default function EditProfileModal({
               className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
             >
               {saving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
-              Save Changes
+              {t.footer.save}
             </button>
           )}
         </div>

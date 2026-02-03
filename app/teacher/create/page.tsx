@@ -16,6 +16,7 @@ import QuestionCard from "./_components/QuestionCard";
 import CartItem from "./_components/CartItem";
 import TestConfigurationModal from "./_components/TestConfigurationModal";
 import toast from "react-hot-toast";
+import { useTeacherLanguage } from "@/app/teacher/layout"; // 🟢 Import Hook
 
 import {
   Save,
@@ -23,8 +24,6 @@ import {
   ChevronRight,
   Layout,
   Grid,
-  ArrowLeft,
-  ArrowUp,
   SearchX,
   Loader2,
   ChevronDown,
@@ -38,6 +37,157 @@ import {
   Wand2,
   Check,
 } from "lucide-react";
+
+// --- 1. TRANSLATION DICTIONARY ---
+const CREATE_TRANSLATIONS = {
+  uz: {
+    placeholder: "Nomsiz Test...",
+    questions: "Savollar",
+    publish: "Nashr qilish",
+    syllabus: {
+      title: "Mundarija",
+      subtitle: "Mavzuni tanlang",
+    },
+    topic: {
+      select: "Mavzu tanlanmagan",
+      instant: "Tezkor Yuklash",
+      auto: "Avto Tanlash:",
+      generate: "Yaratish",
+      clear: "Tozalash",
+    },
+    diff: {
+      easy: "Oson",
+      medium: "O'rtacha",
+      hard: "Qiyin",
+    },
+    list: {
+      selectSub: "Boshlash uchun mavzu tanlang",
+      notFound: "uchun savollar topilmadi",
+      loadMore: "Ko'proq yuklash",
+      loading: "Yuklanmoqda...",
+    },
+    cart: {
+      title: "Testni Ko'rish",
+      clearAll: "Tozalash",
+      emptyTitle: "Test bo'sh",
+      emptyDesc: "Maxsus test yaratish uchun ro'yxatdan savollarni tanlang.",
+      finalize: "Testni Yakunlash va Nashr Qilish",
+      reviewBtn: "Tanlovni Ko'rish",
+    },
+    toasts: {
+      limit: "Maksimal 100 ta savol limiti yetdi!",
+      added: "Qo'shildi",
+      allAdded: "Barcha ko'rinib turgan savollar qo'shilgan.",
+      randomAdded: "Tasodifiy {count} ta savol qo'shildi!",
+      limitHit: "{count} ta savol qo'shildi (100 ta limit yetdi!)",
+      titleReq: "Iltimos, test nomini kiriting",
+      oneReq: "Kamida bitta savol qo'shing",
+      success: "Test Nashr Qilindi!",
+      fail: "Nashr qilishda xatolik",
+      failLoad: "Yuklashda xatolik",
+      removed: "Barcha savollar o'chirildi",
+      confirmRemove: "Barcha savollarni o'chirmoqchimisiz?",
+    },
+  },
+  en: {
+    placeholder: "Untitled Test...",
+    questions: "Questions",
+    publish: "Publish",
+    syllabus: {
+      title: "Syllabus",
+      subtitle: "Select a topic",
+    },
+    topic: {
+      select: "Select a Topic",
+      instant: "Instant Load",
+      auto: "Auto Select:",
+      generate: "Generate",
+      clear: "Clear All",
+    },
+    diff: {
+      easy: "Easy",
+      medium: "Medium",
+      hard: "Hard",
+    },
+    list: {
+      selectSub: "Select a subtopic to begin",
+      notFound: "No questions found for",
+      loadMore: "Load More",
+      loading: "Loading...",
+    },
+    cart: {
+      title: "Review Test",
+      clearAll: "Clear",
+      emptyTitle: "Your test is empty",
+      emptyDesc: "Select questions from the list to build your custom test.",
+      finalize: "Finalize & Publish Test",
+      reviewBtn: "Review Selection",
+    },
+    toasts: {
+      limit: "Maximum limit of 100 questions reached!",
+      added: "Added",
+      allAdded: "All visible questions are already added.",
+      randomAdded: "Randomly added {count} questions!",
+      limitHit: "Added {count} questions (Hit the 100 limit!)",
+      titleReq: "Please enter a test title",
+      oneReq: "Add at least one question",
+      success: "Test Published!",
+      fail: "Failed to publish",
+      failLoad: "Failed to load",
+      removed: "All questions removed",
+      confirmRemove: "Are you sure you want to remove all questions?",
+    },
+  },
+  ru: {
+    placeholder: "Тест без названия...",
+    questions: "Вопросов",
+    publish: "Опубликовать",
+    syllabus: {
+      title: "Учебный план",
+      subtitle: "Выберите тему",
+    },
+    topic: {
+      select: "Выберите тему",
+      instant: "Быстрая загрузка",
+      auto: "Автовыбор:",
+      generate: "Генерировать",
+      clear: "Очистить",
+    },
+    diff: {
+      easy: "Легкий",
+      medium: "Средний",
+      hard: "Сложный",
+    },
+    list: {
+      selectSub: "Выберите подтему, чтобы начать",
+      notFound: "Вопросов не найдено для",
+      loadMore: "Загрузить еще",
+      loading: "Загрузка...",
+    },
+    cart: {
+      title: "Обзор Теста",
+      clearAll: "Очистить",
+      emptyTitle: "Тест пуст",
+      emptyDesc: "Выберите вопросы из списка, чтобы создать тест.",
+      finalize: "Завершить и Опубликовать",
+      reviewBtn: "Обзор Выбора",
+    },
+    toasts: {
+      limit: "Достигнут лимит в 100 вопросов!",
+      added: "Добавлено",
+      allAdded: "Все видимые вопросы уже добавлены.",
+      randomAdded: "Случайно добавлено {count} вопросов!",
+      limitHit: "Добавлено {count} вопросов (Лимит 100!)",
+      titleReq: "Пожалуйста, введите название теста",
+      oneReq: "Добавьте хотя бы один вопрос",
+      success: "Тест опубликован!",
+      fail: "Ошибка публикации",
+      failLoad: "Ошибка загрузки",
+      removed: "Все вопросы удалены",
+      confirmRemove: "Вы уверены, что хотите удалить все вопросы?",
+    },
+  },
+};
 
 // --- TYPES ---
 interface Subtopic {
@@ -61,6 +211,11 @@ interface UIQuestion extends Question {
 export default function CreateTestPage() {
   const { user } = useAuth();
   const router = useRouter();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = CREATE_TRANSLATIONS[lang];
+
   const categories: Category[] = Array.isArray(rawSyllabusData)
     ? (rawSyllabusData as any)
     : [];
@@ -143,7 +298,6 @@ export default function CreateTestPage() {
 
     const cacheKey = getCacheKey(subtopic.index, difficulty);
 
-    // Only check cache on initial load (no cursor)
     if (!cursor) {
       const cached = loadFromCache(cacheKey);
       if (cached && cached.length > 0) {
@@ -188,13 +342,12 @@ export default function CreateTestPage() {
       if (questions.length < 5) setHasMore(false);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load");
+      toast.error(t.toasts.failLoad);
     } finally {
       setLoadingQuestions(false);
     }
   };
 
-  // --- HANDLERS ---
   const handleSelectionChange = (
     newSub: typeof selectedSubtopic,
     newDiff: typeof difficultyFilter
@@ -224,78 +377,66 @@ export default function CreateTestPage() {
     handleSelectionChange(sub, difficultyFilter);
   };
 
-  // --- QUESTION LOGIC (Add/Remove/Random) ---
+  // --- QUESTION LOGIC ---
   const toggleQuestion = (q: UIQuestion) => {
     const exists = addedQuestions.some((item) => item.id === q.id);
 
     if (exists) {
-      // ALLOW REMOVE: If it exists, we can always remove it
       setAddedQuestions(addedQuestions.filter((item) => item.id !== q.id));
     } else {
-      // BLOCK ADD: If limit reached, stop here
       if (addedQuestions.length >= 100) {
-        toast.error("Maximum limit of 100 questions reached!", {
+        toast.error(t.toasts.limit, {
           icon: "🚫",
           style: { borderRadius: "10px", background: "#1e293b", color: "#fff" },
         });
         return;
       }
-
-      // Proceed to add
       setAddedQuestions([...addedQuestions, q]);
-      toast.success("Added", { position: "bottom-center", duration: 1000 });
+      toast.success(t.toasts.added, { position: "bottom-center", duration: 1000 });
     }
   };
 
   const handleAutoSelect = () => {
-    // 1. Check if already full
     if (addedQuestions.length >= 100) {
-      toast.error("Maximum limit of 100 questions reached!", { icon: "🚫" });
+      toast.error(t.toasts.limit, { icon: "🚫" });
       return;
     }
 
-    // 2. Filter available questions to find only NEW ones (candidates)
     const candidates = availableQuestions.filter(
       (q) => !addedQuestions.some((added) => added.id === q.id)
     );
 
     if (candidates.length === 0) {
-      toast("All visible questions are already added.", { icon: "ℹ️" });
+      toast(t.toasts.allAdded, { icon: "ℹ️" });
       return;
     }
 
-    // 3. Calculate Math: How many can we fit?
     const remainingSlots = 100 - addedQuestions.length;
     const userRequested = parseInt(randomCount) || 5;
-
-    // We take the SMALLEST of: what user wants, what fits, or what we have
     const countToAdd = Math.min(
       userRequested,
       remainingSlots,
       candidates.length
     );
 
-    // 4. Shuffle and Select
     const shuffled = [...candidates].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, countToAdd);
 
-    // 5. Update State
     setAddedQuestions((prev) => [...prev, ...selected]);
 
-    // 6. Give Specific Feedback
     if (countToAdd < userRequested) {
-      toast.success(`Added ${countToAdd} questions (Hit the 100 limit!)`, {
+      toast.success(t.toasts.limitHit.replace("{count}", countToAdd.toString()), {
         icon: "⚠️",
       });
     } else {
-      toast.success(`Randomly added ${countToAdd} questions!`, { icon: "✨" });
+      toast.success(t.toasts.randomAdded.replace("{count}", countToAdd.toString()), { icon: "✨" });
     }
   };
 
   const handlePublishClick = () => {
-    if (!testTitle.trim()) return toast.error("Please enter a test title");
+    if (!testTitle.trim()) return toast.error(t.toasts.titleReq);
     if (addedQuestions.length === 0)
-      return toast.error("Add at least one question");
+      return toast.error(t.toasts.oneReq);
     setIsConfigModalOpen(true);
   };
 
@@ -316,12 +457,12 @@ export default function CreateTestPage() {
         questionCount: addedQuestions.length,
         questions: addedQuestions,
       });
-      toast.success("Test Published!");
+      toast.success(t.toasts.success);
       setIsConfigModalOpen(false);
       router.push("/teacher/dashboard");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to publish");
+      toast.error(t.toasts.fail);
     } finally {
       setIsSaving(false);
     }
@@ -360,7 +501,6 @@ export default function CreateTestPage() {
       {/* --- HEADER --- */}
 <header className="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 lg:px-6 z-20 shadow-sm relative">
   
-  {/* Left Side: Logo & Title (Added min-w-0 to prevent overflow) */}
   <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 mr-4">
     <button
       onClick={() => setIsSyllabusOpen(!isSyllabusOpen)}
@@ -373,34 +513,32 @@ export default function CreateTestPage() {
       <Sparkles size={18} />
     </div>
 
-    {/* 🟢 FIXED INPUT: Removed max-width, added flex-1 and focus styles */}
     <input
       type="text"
-      placeholder="Untitled Test..."
+      placeholder={t.placeholder}
       className="flex-1 min-w-0 text-lg font-bold text-slate-800 placeholder:text-slate-400 border-none outline-none bg-transparent focus:bg-slate-50 focus:ring-2 focus:ring-indigo-100 rounded-md px-2 -ml-2 transition-all truncate"
       value={testTitle}
       onChange={(e) => setTestTitle(e.target.value)}
     />
   </div>
 
-  {/* Right Side: Actions (Shrink-0 prevents crushing) */}
   <div className="flex items-center gap-3 shrink-0">
     <div className="hidden md:flex items-center text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full whitespace-nowrap">
-      {addedQuestions.length} Questions
+      {addedQuestions.length} {t.questions}
     </div>
     <button
       onClick={handlePublishClick}
       disabled={isSaving}
       className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
     >
-      <Save size={16} /> <span className="hidden sm:inline">Publish</span>
+      <Save size={16} /> <span className="hidden sm:inline">{t.publish}</span>
     </button>
   </div>
 </header>
 
       {/* --- WORKSPACE --- */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* --- A. MODERN SYLLABUS --- */}
+        {/* --- A. SYLLABUS --- */}
         <aside
           className={`
           fixed lg:static inset-y-0 left-0 z-40 w-80 bg-slate-50 border-r border-slate-200 transform transition-transform duration-300 shadow-2xl lg:shadow-none
@@ -418,8 +556,8 @@ export default function CreateTestPage() {
                 <Layers size={18} className="text-indigo-600" />
               </div>
               <div>
-                <h2 className="font-bold text-slate-800 text-base">Syllabus</h2>
-                <p className="text-xs text-slate-400">Select a topic</p>
+                <h2 className="font-bold text-slate-800 text-base">{t.syllabus.title}</h2>
+                <p className="text-xs text-slate-400">{t.syllabus.subtitle}</p>
               </div>
             </div>
             <button
@@ -545,9 +683,8 @@ export default function CreateTestPage() {
           />
         )}
 
-        {/* --- B. MAIN CONTENT (Improved) --- */}
+        {/* --- B. MAIN CONTENT --- */}
         <main className="flex-1 overflow-hidden flex flex-col relative bg-slate-50/50 w-full font-sans">
-          {/* Sticky Controls Header */}
           <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 z-30 sticky top-0 shadow-sm">
             <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
@@ -555,11 +692,11 @@ export default function CreateTestPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-slate-800 truncate text-sm md:text-base leading-tight">
-                  {selectedSubtopic ? selectedSubtopic.name : "Select a Topic"}
+                  {selectedSubtopic ? selectedSubtopic.name : t.topic.select}
                 </h3>
                 {isCachedData && (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
-                    <Database size={9} /> Instant Load
+                    <Database size={9} /> {t.topic.instant}
                   </span>
                 )}
               </div>
@@ -576,7 +713,8 @@ export default function CreateTestPage() {
                       lvl
                     )}`}
                   >
-                    {lvl}
+                    {/* @ts-ignore */}
+                    {t.diff[lvl.toLowerCase()]}
                   </button>
                 ))}
               </div>
@@ -585,7 +723,7 @@ export default function CreateTestPage() {
               {selectedSubtopic && (
                 <div className="flex items-center gap-2 w-full md:w-auto border-t md:border-t-0 border-slate-200 pt-2 md:pt-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:block">
-                    Auto Select:
+                    {t.topic.auto}
                   </span>
                   <div className="flex items-center gap-1 w-full">
                     <input
@@ -604,13 +742,13 @@ export default function CreateTestPage() {
                       className="flex-1 md:flex-none px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
                     >
                       <Wand2 size={12} />{" "}
-                      <span className="md:hidden">Generate</span>
+                      <span className="md:hidden">{t.topic.generate}</span>
                     </button>
                     {addedQuestions.length > 0 && (
                       <button
                         onClick={() => setAddedQuestions([])}
                         className="px-3 py-1.5 bg-white border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 rounded-lg"
-                        title="Clear All"
+                        title={t.topic.clear}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -630,16 +768,17 @@ export default function CreateTestPage() {
                     <Layout size={28} className="text-indigo-200 opacity-50" />
                   </div>
                   <p className="text-sm font-medium">
-                    Select a subtopic to begin
+                    {t.list.selectSub}
                   </p>
                 </div>
               ) : availableQuestions.length === 0 && !loadingQuestions ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                   <SearchX size={40} className="text-slate-300 mb-3" />
                   <p className="text-sm">
-                    No questions found for{" "}
+                    {t.list.notFound}{" "}
                     <span className="font-bold text-slate-500">
-                      {difficultyFilter}
+                      {/* @ts-ignore */}
+                      {t.diff[difficultyFilter.toLowerCase()]}
                     </span>
                   </p>
                 </div>
@@ -668,11 +807,11 @@ export default function CreateTestPage() {
                         {loadingQuestions ? (
                           <span className="flex items-center justify-center gap-2">
                             <Loader2 size={14} className="animate-spin" />{" "}
-                            Loading...
+                            {t.list.loading}
                           </span>
                         ) : (
                           <span className="flex items-center justify-center gap-2">
-                            Load More <ChevronDown size={14} />
+                            {t.list.loadMore} <ChevronDown size={14} />
                           </span>
                         )}
                       </button>
@@ -695,7 +834,6 @@ export default function CreateTestPage() {
   h-[90vh] lg:h-full rounded-t-3xl lg:rounded-none
 `}
         >
-          {/* Mobile Drag Handle */}
           <div
             className="lg:hidden flex justify-center pt-3 pb-1 w-full"
             onClick={() => setIsCartOpen(false)}
@@ -703,14 +841,13 @@ export default function CreateTestPage() {
             <div className="w-12 h-1.5 bg-slate-700 rounded-full cursor-pointer opacity-50 hover:opacity-100 transition-opacity"></div>
           </div>
 
-          {/* Header with Clear All */}
           <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center shrink-0">
             <div>
               <h3 className="font-bold flex items-center gap-2 text-indigo-400 text-lg">
-                <ShoppingBag size={20} /> Review Test
+                <ShoppingBag size={20} /> {t.cart.title}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                {addedQuestions.length} / 100 Questions
+                {addedQuestions.length} / 100 {t.questions}
               </p>
             </div>
 
@@ -719,15 +856,15 @@ export default function CreateTestPage() {
                 <button
                   onClick={() => {
                     if (
-                      confirm("Are you sure you want to remove all questions?")
+                      confirm(t.toasts.confirmRemove)
                     ) {
                       setAddedQuestions([]);
-                      toast.success("All questions removed");
+                      toast.success(t.toasts.removed);
                     }
                   }}
                   className="text-xs font-bold text-slate-400 hover:text-red-400 hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
                 >
-                  <Trash2 size={14} /> Clear
+                  <Trash2 size={14} /> {t.cart.clearAll}
                 </button>
               )}
               <button
@@ -739,7 +876,6 @@ export default function CreateTestPage() {
             </div>
           </div>
 
-          {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {addedQuestions.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-2xl p-8 text-center mx-2">
@@ -747,14 +883,13 @@ export default function CreateTestPage() {
                   <FileText size={32} className="opacity-40" />
                 </div>
                 <p className="text-sm font-medium text-slate-400">
-                  Your test is empty
+                  {t.cart.emptyTitle}
                 </p>
                 <p className="text-xs text-slate-500 mt-2 max-w-[200px]">
-                  Select questions from the list to build your custom test.
+                  {t.cart.emptyDesc}
                 </p>
               </div>
             ) : (
-              // Using the new CartItem component here
               addedQuestions.map((q, idx) => (
                 <CartItem
                   key={q.id}
@@ -766,7 +901,6 @@ export default function CreateTestPage() {
             )}
           </div>
 
-          {/* Fixed Footer */}
           <div className="p-4 bg-slate-900 border-t border-slate-800 pb-8 lg:pb-4 shrink-0 z-10">
             <button
               onClick={handlePublishClick}
@@ -774,7 +908,7 @@ export default function CreateTestPage() {
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-white shadow-lg shadow-indigo-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm"
             >
               <Check size={18} strokeWidth={3} />
-              Finalize & Publish Test
+              {t.cart.finalize}
             </button>
           </div>
         </aside>
@@ -802,7 +936,7 @@ export default function CreateTestPage() {
                 )}
               </div>
               <span className="font-bold text-sm whitespace-nowrap">
-                Review Selection
+                {t.cart.reviewBtn}
               </span>
             </button>
           </div>

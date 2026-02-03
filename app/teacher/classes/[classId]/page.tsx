@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-// 🟢 1. Add 'collection' and 'query' to imports
 import { doc, onSnapshot, getDoc, collection, query } from 'firebase/firestore';
 import { Users, UserPlus, Hash, ChevronLeft, Inbox, FileText } from 'lucide-react';
 import Link from 'next/link';
@@ -12,15 +11,73 @@ import RequestsTab from './_components/RequestsTab';
 import AddStudentModal from './_components/AddStudentModal';
 import AssignTestModal from './_components/AssignTestModal';
 import AssignmentsTab from './_components/AssignmentsTab';
+import { useTeacherLanguage } from '@/app/teacher/layout'; // 🟢 Import Hook
+
+// --- 1. TRANSLATION DICTIONARY ---
+const DETAILS_TRANSLATIONS = {
+  uz: {
+    back: "Sinflarga qaytish",
+    noDesc: "Tavsif berilmagan.",
+    code: "Kod:",
+    studentsCount: "O'quvchi",
+    buttons: {
+      add: "O'quvchi Qo'shish",
+      assign: "Test Biriktirish"
+    },
+    tabs: {
+      students: "O'quvchilar",
+      assignments: "Topshiriqlar",
+      requests: "So'rovlar"
+    },
+    loading: "Sinf yuklanmoqda...",
+    unknown: "Noma'lum Foydalanuvchi"
+  },
+  en: {
+    back: "Back to Classes",
+    noDesc: "No description provided.",
+    code: "Code:",
+    studentsCount: "Students",
+    buttons: {
+      add: "Add Student",
+      assign: "Assign Test"
+    },
+    tabs: {
+      students: "Students",
+      assignments: "Assignments",
+      requests: "Requests"
+    },
+    loading: "Loading Class...",
+    unknown: "Unknown User"
+  },
+  ru: {
+    back: "Назад к классам",
+    noDesc: "Описание отсутствует.",
+    code: "Код:",
+    studentsCount: "Учеников",
+    buttons: {
+      add: "Добавить Ученика",
+      assign: "Назначить Тест"
+    },
+    tabs: {
+      students: "Ученики",
+      assignments: "Задания",
+      requests: "Запросы"
+    },
+    loading: "Загрузка класса...",
+    unknown: "Неизвестный пользователь"
+  }
+};
 
 export default function ClassDetailsPage() {
   const { classId } = useParams() as { classId: string };
   
+  // 🟢 Use Language Hook
+  const { lang } = useTeacherLanguage();
+  const t = DETAILS_TRANSLATIONS[lang];
+
   // --- STATE ---
   const [classData, setClassData] = useState<any>(null);
   const [rosterData, setRosterData] = useState<any[]>([]);
-  
-  // 🟢 2. Add state for the counter
   const [requestCount, setRequestCount] = useState(0);
   
   // UI State
@@ -40,14 +97,12 @@ export default function ClassDetailsPage() {
     return () => unsubscribe();
   }, [classId]);
 
-  // 🟢 3. NEW LISTENER: Count the requests in real-time
+  // NEW LISTENER: Count the requests in real-time
   useEffect(() => {
     if (!classId) return;
-    // Listen to the 'requests' subcollection
     const q = query(collection(db, 'classes', classId, 'requests'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // snapshot.size gives the number of documents in the collection
       setRequestCount(snapshot.size);
     });
     
@@ -66,13 +121,13 @@ export default function ClassDetailsPage() {
         const snapshots = await Promise.all(promises);
         const students = snapshots.map((snap, index) => {
           if (snap.exists()) return { uid: snap.id, ...snap.data() };
-          return { uid: classData.studentIds[index], displayName: 'Unknown User', username: 'unknown' };
+          return { uid: classData.studentIds[index], displayName: t.unknown, username: 'unknown' };
         });
         setRosterData(students);
       } catch (error) { console.error(error); } 
     };
     fetchRoster();
-  }, [classData?.studentIds]);
+  }, [classData?.studentIds, t.unknown]);
 
   const handleEditAssignment = (assignment: any) => {
     setAssignmentToEdit(assignment);
@@ -84,7 +139,7 @@ export default function ClassDetailsPage() {
     setIsAssignOpen(true);
   };
 
-  if (!classData) return <div className="p-10 text-center text-slate-500">Loading Class...</div>;
+  if (!classData) return <div className="p-10 text-center text-slate-500">{t.loading}</div>;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -103,22 +158,22 @@ export default function ClassDetailsPage() {
       {/* --- HEADER --- */}
       <div>
         <Link href="/teacher/classes" className="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1 mb-2 transition-colors">
-          <ChevronLeft size={14}/> Back to Classes
+          <ChevronLeft size={14}/> {t.back}
         </Link>
         
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{classData.title}</h1>
-            <p className="text-slate-500 text-sm font-medium mb-3">{classData.description || "No description provided."}</p>
+            <p className="text-slate-500 text-sm font-medium mb-3">{classData.description || t.noDesc}</p>
             
             <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
                 <Hash size={14} className="text-indigo-500"/> 
-                Code: <span className="font-mono text-slate-900 bg-slate-100 px-1 rounded ml-1">{classData.joinCode}</span>
+                {t.code} <span className="font-mono text-slate-900 bg-slate-100 px-1 rounded ml-1">{classData.joinCode}</span>
               </span>
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
                 <Users size={14} className="text-indigo-500"/> 
-                {classData.studentIds?.length || 0} Students
+                {classData.studentIds?.length || 0} {t.studentsCount}
               </span>
             </div>
           </div>
@@ -128,13 +183,13 @@ export default function ClassDetailsPage() {
               onClick={() => setIsAddOpen(true)}
               className="flex justify-center items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl font-bold transition-all text-sm active:scale-95"
             >
-              <UserPlus size={18} /> Add Student
+              <UserPlus size={18} /> {t.buttons.add}
             </button>
             <button 
               onClick={handleCreateAssignment}
               className="flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-indigo-200 active:scale-95 text-sm"
             >
-              <FileText size={18} /> Assign Test
+              <FileText size={18} /> {t.buttons.assign}
             </button>
           </div>
         </div>
@@ -147,21 +202,20 @@ export default function ClassDetailsPage() {
             onClick={() => setActiveTab('students')}
             className={`flex-1 min-w-[120px] py-4 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'students' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
           >
-            <Users size={16} /> Students
+            <Users size={16} /> {t.tabs.students}
           </button>
           <button 
             onClick={() => setActiveTab('assignments')}
             className={`flex-1 min-w-[120px] py-4 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'assignments' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
           >
-            <FileText size={16} /> Assignments
+            <FileText size={16} /> {t.tabs.assignments}
           </button>
           
-          {/* 🟢 4. UPDATED TAB BUTTON WITH BADGE */}
           <button 
             onClick={() => setActiveTab('requests')}
             className={`flex-1 min-w-[120px] py-4 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'requests' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
           >
-            <Inbox size={16} /> Requests
+            <Inbox size={16} /> {t.tabs.requests}
             {requestCount > 0 && (
               <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                 {requestCount}

@@ -12,10 +12,122 @@ import {
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-
 import AssignmentsTab from './_components/AssignmentsTab';
+import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Language Hook
 
-// Floating Particles Background
+// --- 1. TRANSLATION DICTIONARY ---
+const CLASS_TRANSLATIONS = {
+  uz: {
+    back: "Sinflarimga qaytish",
+    welcome: "Sinfingiz ish maydoniga xush kelibsiz.",
+    instructor: "O'qituvchi",
+    tabs: {
+      assignments: "Topshiriqlar",
+      grades: "Baholarim",
+      info: "Sinf haqida"
+    },
+    grades: {
+      assignment: "Topshiriq",
+      submitted: "Topshirildi",
+      tries: "Urinishlar",
+      score: "Joriy Ball",
+      action: "Amal",
+      noGrades: "Hali baholar yo'q.",
+      justNow: "Hozirgina",
+      view: "Natijani ko'rish"
+    },
+    info: {
+      title: "Sinf Tafsilotlari",
+      teacher: "O'qituvchi",
+      code: "Kirish Kodi",
+      created: "Yaratilgan",
+      danger: "Xavfli Hudud",
+      leaveDesc: "Sinfdan chiqish sizni ro'yxatdan o'chiradi. Barcha topshiriqlarga kirish imkoniyatini yo'qotasiz.",
+      leaveBtn: "Sinfni Tark Etish",
+      confirmLeave: "Haqiqatan ham tark etmoqchimisiz?"
+    },
+    toasts: {
+      notFound: "Sinf topilmadi",
+      accessDenied: "Kirish rad etildi",
+      leftSuccess: "Sinfdan muvaffaqiyatli chiqdingiz",
+      leftFail: "Chiqishda xatolik yuz berdi"
+    }
+  },
+  en: {
+    back: "Back to My Classes",
+    welcome: "Welcome to your class workspace.",
+    instructor: "Instructor",
+    tabs: {
+      assignments: "Assignments",
+      grades: "My Grades",
+      info: "Class Info"
+    },
+    grades: {
+      assignment: "Assignment",
+      submitted: "Last Submitted",
+      tries: "Tries",
+      score: "Current Score",
+      action: "Action",
+      noGrades: "No grades recorded yet.",
+      justNow: "Just now",
+      view: "View Result"
+    },
+    info: {
+      title: "Class Details",
+      teacher: "Teacher",
+      code: "Join Code",
+      created: "Created",
+      danger: "Danger Zone",
+      leaveDesc: "Leaving this class will remove you from the student list. You will lose access to all assignments.",
+      leaveBtn: "Leave Class",
+      confirmLeave: "Are you sure you want to leave?"
+    },
+    toasts: {
+      notFound: "Class not found",
+      accessDenied: "Access Denied",
+      leftSuccess: "Left class successfully",
+      leftFail: "Failed to leave"
+    }
+  },
+  ru: {
+    back: "Назад к моим классам",
+    welcome: "Добро пожаловать в рабочее пространство класса.",
+    instructor: "Преподаватель",
+    tabs: {
+      assignments: "Задания",
+      grades: "Мои Оценки",
+      info: "Информация"
+    },
+    grades: {
+      assignment: "Задание",
+      submitted: "Сдано",
+      tries: "Попытки",
+      score: "Текущий Балл",
+      action: "Действие",
+      noGrades: "Оценок пока нет.",
+      justNow: "Только что",
+      view: "Смотреть"
+    },
+    info: {
+      title: "Детали Класса",
+      teacher: "Учитель",
+      code: "Код Входа",
+      created: "Создан",
+      danger: "Опасная Зона",
+      leaveDesc: "Выход из класса удалит вас из списка студентов. Вы потеряете доступ ко всем заданиям.",
+      leaveBtn: "Покинуть Класс",
+      confirmLeave: "Вы уверены, что хотите выйти?"
+    },
+    toasts: {
+      notFound: "Класс не найден",
+      accessDenied: "Доступ запрещен",
+      leftSuccess: "Вы успешно покинули класс",
+      leftFail: "Не удалось выйти"
+    }
+  }
+};
+
+// Floating Particles Background (Unchanged)
 const FloatingParticles = () => {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -57,7 +169,6 @@ const FloatingParticles = () => {
   );
 };
 
-// Glowing Orb Component
 interface GlowingOrbProps {
     color: string;
     size: number;
@@ -91,6 +202,10 @@ export default function StudentClassPage() {
   const { classId } = useParams() as { classId: string };
   const { user } = useAuth();
   const router = useRouter();
+  
+  // 🟢 Use Language Hook
+  const { lang } = useStudentLanguage();
+  const t = CLASS_TRANSLATIONS[lang];
 
   const [classData, setClassData] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -102,24 +217,21 @@ export default function StudentClassPage() {
   useEffect(() => {
     if (!user) return; 
     
-    // 🟢 FIX: Capture userId here to satisfy TypeScript
     const userId = user.uid;
 
     async function fetchData() {
       setLoading(true);
       try {
-        // A. Fetch Class
         const classRef = doc(db, 'classes', classId);
         const classSnap = await getDoc(classRef);
 
         if (!classSnap.exists()) {
-          toast.error("Class not found");
+          toast.error(t.toasts.notFound);
           router.push('/classes');
           return;
         }
         setClassData({ id: classSnap.id, ...classSnap.data() });
 
-        // B. Fetch Assignments
         const assignQuery = query(
           collection(db, 'classes', classId, 'assignments'), 
           where('status', '==', 'active'),
@@ -128,14 +240,12 @@ export default function StudentClassPage() {
         const assignSnap = await getDocs(assignQuery);
         const allAssignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // 🟢 FIX: Use captured 'userId' which is guaranteed to be a string
         const myAssignments = allAssignments.filter((a: any) => 
           a.assignedTo === 'all' || 
           (Array.isArray(a.assignedTo) && a.assignedTo.includes(userId))
         );
         setAssignments(myAssignments);
 
-        // C. Fetch Attempts
         const attemptQuery = query(
           collection(db, 'attempts'), 
           where('classId', '==', classId),
@@ -147,7 +257,7 @@ export default function StudentClassPage() {
       } catch (e: any) {
         console.error(e);
         if (e.code === 'permission-denied') {
-          toast.error("Access Denied");
+          toast.error(t.toasts.accessDenied);
           router.push('/classes');
         }
       } finally {
@@ -155,15 +265,15 @@ export default function StudentClassPage() {
       }
     }
     fetchData();
-  }, [classId, user, router]);
+  }, [classId, user, router, t]); // Added 't' dependency
 
   const handleLeaveClass = async () => {
-    if(!confirm("Are you sure you want to leave?")) return;
+    if(!confirm(t.info.confirmLeave)) return;
     try {
       await updateDoc(doc(db, 'classes', classId), { studentIds: arrayRemove(user?.uid) });
-      toast.success("Left class successfully");
+      toast.success(t.toasts.leftSuccess);
       router.push('/classes');
-    } catch(e) { toast.error("Failed to leave"); }
+    } catch(e) { toast.error(t.toasts.leftFail); }
   };
 
   if (loading) return (
@@ -206,7 +316,7 @@ export default function StudentClassPage() {
         {/* 1. HEADER */}
         <div className="mb-8">
           <Link href="/classes" className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-blue-400 mb-4 transition-colors group">
-            <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform"/> Back to My Classes
+            <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform"/> {t.back}
           </Link>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
              <div>
@@ -215,7 +325,7 @@ export default function StudentClassPage() {
                  {classData.title}
                </h1>
                <p className="text-slate-400 font-medium text-base leading-relaxed max-w-2xl">
-                 {classData.description || "Welcome to your class workspace."}
+                 {classData.description || t.welcome}
                </p>
              </div>
              {/* Teacher Badge */}
@@ -224,7 +334,7 @@ export default function StudentClassPage() {
                   {classData.teacherName?.[0] || 'T'}
                 </div>
                 <div className="text-sm">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Instructor</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{t.instructor}</p>
                   <p className="font-bold text-white">{classData.teacherName}</p>
                 </div>
              </div>
@@ -234,9 +344,9 @@ export default function StudentClassPage() {
         {/* 2. TABS */}
         <div className="flex p-1 bg-slate-800/50 rounded-xl mb-8 w-full overflow-x-auto scrollbar-hide">
           {[
-            { id: 'assignments', label: 'Assignments', icon: FileText },
-            { id: 'grades', label: 'My Grades', icon: BarChart2 },
-            { id: 'info', label: 'Class Info', icon: Info },
+            { id: 'assignments', label: t.tabs.assignments, icon: FileText },
+            { id: 'grades', label: t.tabs.grades, icon: BarChart2 },
+            { id: 'info', label: t.tabs.info, icon: Info },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -251,7 +361,7 @@ export default function StudentClassPage() {
         {/* 3. CONTENT AREA */}
         <div className="min-h-[400px]">
           
-          {/* A. ASSIGNMENTS TAB (Uses new component) */}
+          {/* A. ASSIGNMENTS TAB */}
           {activeTab === 'assignments' && (
             <AssignmentsTab 
               assignments={assignments} 
@@ -260,24 +370,24 @@ export default function StudentClassPage() {
             />
           )}
 
-          {/* B. GRADES TAB (Simplified for Single Attempt Mode) */}
+          {/* B. GRADES TAB */}
           {activeTab === 'grades' && (
             <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-slate-700 overflow-hidden shadow-lg">
                <table className="w-full text-sm text-left">
                <thead className="bg-slate-800/50 text-slate-400 font-bold border-b border-slate-700 uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="p-4 pl-5">Assignment</th>
-                <th className="p-4 hidden sm:table-cell">Last Submitted</th>
-                <th className="p-4 text-center">Tries</th>
-                <th className="p-4 text-center">Current Score</th>
-                <th className="p-4 text-right pr-5">Action</th>
+                <th className="p-4 pl-5">{t.grades.assignment}</th>
+                <th className="p-4 hidden sm:table-cell">{t.grades.submitted}</th>
+                <th className="p-4 text-center">{t.grades.tries}</th>
+                <th className="p-4 text-center">{t.grades.score}</th>
+                <th className="p-4 text-right pr-5">{t.grades.action}</th>
               </tr>
             </thead>
                <tbody className="divide-y divide-slate-700/50">
                  {myAttempts.length === 0 ? (
                    <tr>
                      <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
-                       No grades recorded yet.
+                       {t.grades.noGrades}
                      </td>
                    </tr>
                  ) : (
@@ -294,7 +404,7 @@ export default function StudentClassPage() {
                            {attempt.testTitle}
                          </td>
                          <td className="p-4 text-slate-400 font-medium hidden sm:table-cell">
-                           {attempt.submittedAt?.seconds ? new Date(attempt.submittedAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                           {attempt.submittedAt?.seconds ? new Date(attempt.submittedAt.seconds * 1000).toLocaleDateString() : t.grades.justNow}
                          </td>
                          <td className="p-4 text-center">
                             <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-bold">
@@ -311,7 +421,7 @@ export default function StudentClassPage() {
                               href={`/classes/${classId}/test/${attempt.assignmentId}/results`}
                               className="text-blue-400 font-bold hover:text-blue-300 text-xs"
                             >
-                              View Result
+                              {t.grades.view}
                             </Link>
                          </td>
                        </tr>
@@ -327,28 +437,28 @@ export default function StudentClassPage() {
           {activeTab === 'info' && (
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 md:p-8 rounded-2xl border border-slate-700 shadow-lg space-y-6">
-                <h3 className="font-black text-white text-lg flex items-center gap-2"><Info size={20} className="text-blue-400"/> Class Details</h3>
+                <h3 className="font-black text-white text-lg flex items-center gap-2"><Info size={20} className="text-blue-400"/> {t.info.title}</h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                      <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 border border-slate-600"><User size={20}/></div>
-                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">Teacher</p><p className="font-bold text-white">{classData.teacherName || 'Unknown'}</p></div>
+                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">{t.info.teacher}</p><p className="font-bold text-white">{classData.teacherName || 'Unknown'}</p></div>
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                      <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 border border-slate-600"><Hash size={20}/></div>
-                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">Join Code</p><p className="font-mono font-bold text-white text-lg tracking-widest">{classData.joinCode}</p></div>
+                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">{t.info.code}</p><p className="font-mono font-bold text-white text-lg tracking-widest">{classData.joinCode}</p></div>
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                      <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 border border-slate-600"><Calendar size={20}/></div>
-                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">Created</p><p className="font-bold text-white">{classData.createdAt?.seconds ? new Date(classData.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</p></div>
+                     <div><p className="text-[10px] font-bold text-slate-400 uppercase">{t.info.created}</p><p className="font-bold text-white">{classData.createdAt?.seconds ? new Date(classData.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</p></div>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col justify-end">
                 <div className="bg-red-500/10 p-6 rounded-2xl border border-red-500/30 text-center">
-                   <h4 className="font-bold text-red-400 mb-2">Danger Zone</h4>
-                   <p className="text-red-400/80 text-sm mb-6">Leaving this class will remove you from the student list. You will lose access to all assignments.</p>
+                   <h4 className="font-bold text-red-400 mb-2">{t.info.danger}</h4>
+                   <p className="text-red-400/80 text-sm mb-6">{t.info.leaveDesc}</p>
                    <button onClick={handleLeaveClass} className="w-full py-3.5 bg-slate-800 border border-red-500/30 text-red-400 font-bold rounded-xl hover:bg-red-500/20 hover:text-red-300 transition-all shadow-lg flex items-center justify-center gap-2 group">
-                    <LogOut size={18} className="group-hover:-translate-x-1 transition-transform"/> Leave Class
+                    <LogOut size={18} className="group-hover:-translate-x-1 transition-transform"/> {t.info.leaveBtn}
                   </button>
                 </div>
               </div>
