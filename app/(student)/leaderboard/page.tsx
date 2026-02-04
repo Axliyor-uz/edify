@@ -4,94 +4,61 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, limit, orderBy, doc, getDoc } from 'firebase/firestore';
 import { 
-  Trophy, Medal, Flame, Shield, User as UserIcon, 
-  ChevronRight, Crown 
+  Trophy, Medal, Crown, Sparkles, User as UserIcon, Shield, Flame
 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useStudentLanguage } from '@/app/(student)/layout'; // 🟢 Import Hook
+import { motion, AnimatePresence } from 'framer-motion';
+import { useStudentLanguage } from '@/app/(student)/layout';
 
-// --- 1. TRANSLATION DICTIONARY ---
+// --- 1. HELPERS: DATE IDs ---
+const getPeriodIds = () => {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+
+  const oneJan = new Date(Date.UTC(year, 0, 1));
+  const days = Math.floor((now.getTime() - oneJan.getTime()) / 86400000);
+  const weekNum = Math.ceil((days + oneJan.getUTCDay() + 1) / 7);
+
+  return {
+    today: `day_${year}_${month}_${day}`,
+    week: `week_${year}_${String(weekNum).padStart(2, '0')}`,
+    month: `month_${year}_${month}`,
+    all: `all_time`
+  };
+};
+
+// --- TRANSLATIONS ---
 const LEADERBOARD_TRANSLATIONS = {
   uz: {
-    title: "Reyting",
-    subtitle: "Eng yaxshi talabalar:",
-    filters: {
-      today: "Bugun",
-      week: "Hafta",
-      month: "Oy",
-      all: "Barcha Vaqt"
-    },
-    empty: {
-      title: "Chempionlar topilmadi",
-      desc: "Ushbu davr uchun hech kim topilmadi."
-    },
-    card: {
-      you: "Siz",
-      lvl: "Daraja",
-      xp: "XP Yig'ildi"
-    }
+    title: "Chempionlar Ligasi",
+    subtitle: "Eng kuchli o'quvchilar reytingi",
+    tabs: { today: "Bugun", week: "Hafta", month: "Oy", all: "Umumiy" },
+    empty: "Hozircha natijalar yo'q",
+    you: "Siz",
+    xp: "XP"
   },
   en: {
-    title: "Leaderboard",
-    subtitle: "Top students for",
-    filters: {
-      today: "Today",
-      week: "Week",
-      month: "Month",
-      all: "All Time"
-    },
-    empty: {
-      title: "No champions found",
-      desc: "No champions found for this period."
-    },
-    card: {
-      you: "You",
-      lvl: "Lvl",
-      xp: "XP Earned"
-    }
+    title: "Champions League",
+    subtitle: "Ranking the top performing students",
+    tabs: { today: "Today", week: "This Week", month: "This Month", all: "All Time" },
+    empty: "No results yet",
+    you: "You",
+    xp: "XP"
   },
   ru: {
-    title: "Рейтинг",
-    subtitle: "Лучшие студенты за",
-    filters: {
-      today: "Сегодня",
-      week: "Неделя",
-      month: "Месяц",
-      all: "Все Время"
-    },
-    empty: {
-      title: "Чемпионы не найдены",
-      desc: "За этот период чемпионов не найдено."
-    },
-    card: {
-      you: "Вы",
-      lvl: "Ур",
-      xp: "Получено XP"
-    }
+    title: "Лига Чемпионов",
+    subtitle: "Рейтинг лучших учеников",
+    tabs: { today: "Сегодня", week: "Неделя", month: "Месяц", all: "Все время" },
+    empty: "Пока нет результатов",
+    you: "Вы",
+    xp: "XP"
   }
 };
 
-// --- TYPE DEFINITIONS ---
-
-interface LeaderboardUser {
-  uid: string;
-  displayName: string;
-  totalXP: number;
-  currentStreak: number;
-  dailyHistory?: Record<string, number>;
-  score: number; 
-}
-
-interface GlowingOrbProps {
-  color: string;
-  size: number;
-  position: { x: string; y: string };
-}
-
-// --- VISUAL COMPONENTS ---
-
+// --- VISUAL COMPONENT: Your Live Background ---
 const FloatingParticles = () => {
   const particles = Array.from({ length: 20 }, (_, i) => ({
     id: i,
@@ -131,289 +98,214 @@ const FloatingParticles = () => {
   );
 };
 
-const GlowingOrb = ({ color, size, position }: GlowingOrbProps) => (
-  <motion.div
-    className={`absolute rounded-full ${color} blur-3xl opacity-20 pointer-events-none`}
-    style={{
-      width: `${size}px`,
-      height: `${size}px`,
-      left: position.x,
-      top: position.y,
-    }}
-    animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-  />
-);
-
-// --- LOGIC HELPERS ---
-const getTodayKey = () => new Date().toISOString().split('T')[0];
-
-const getWeekKeys = () => {
-  const keys: string[] = [];
-  const today = new Date();
-  const day = today.getDay(); 
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
-  const monday = new Date(today.setDate(diff));
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    keys.push(d.toISOString().split('T')[0]);
-  }
-  return keys;
-};
-
-const getMonthKeys = () => {
-  const keys: string[] = [];
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth(); 
-  const date = new Date(year, month, 1);
-  while (date.getMonth() === month) {
-    keys.push(date.toISOString().split('T')[0]);
-    date.setDate(date.getDate() + 1);
-  }
-  return keys;
-};
-
 export default function LeaderboardPage() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
-  
-  // 🟢 Use Language Hook
+  const { user } = useAuth();
   const { lang } = useStudentLanguage();
   const t = LEADERBOARD_TRANSLATIONS[lang];
 
-  const [users, setUsers] = useState<LeaderboardUser[]>([]);
+  // State
+  const [activeTab, setActiveTab] = useState<'today' | 'week' | 'month' | 'all'>('week');
+  const [leaders, setLeaders] = useState<any[]>([]);
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('week');
 
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, 'users'), orderBy('totalXP', 'desc'), limit(100));
+        const periodIds = getPeriodIds();
+        const collectionId = periodIds[activeTab];
+
+        // 1. Fetch Top 50
+        const q = query(
+          collection(db, 'leaderboards', collectionId, 'users'), 
+          orderBy('xp', 'desc'), 
+          limit(50)
+        );
         const snapshot = await getDocs(q);
-        
-        const rawUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as any));
+        const data = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
+        setLeaders(data);
 
-        const processed: LeaderboardUser[] = rawUsers.map((u: any) => {
-          let score = 0;
-          const history = u.dailyHistory || {};
+        // 2. Fetch "ME"
+        if (user) {
+          const myRankData = data.find((u: any) => u.uid === user.uid);
           
-          if (filter === 'all') score = u.totalXP || 0;
-          else if (filter === 'today') score = history[getTodayKey()] || 0;
-          else if (filter === 'week') getWeekKeys().forEach(k => score += (history[k] || 0));
-          else if (filter === 'month') getMonthKeys().forEach(k => score += (history[k] || 0));
-          
-          return {
-            uid: u.uid,
-            displayName: u.displayName || 'Anonymous',
-            totalXP: u.totalXP || 0,
-            currentStreak: u.currentStreak || 0,
-            dailyHistory: u.dailyHistory,
-            score: score
-          };
-        });
-
-        const sorted = processed.filter(u => u.score > 0).sort((a, b) => b.score - a.score);
-        setUsers(sorted);
+          if (myRankData) {
+            setCurrentUserData({ ...myRankData, rank: data.indexOf(myRankData) + 1 });
+          } else {
+            const myDocRef = doc(db, 'leaderboards', collectionId, 'users', user.uid);
+            const myDocSnap = await getDoc(myDocRef);
+            if (myDocSnap.exists()) {
+              setCurrentUserData({ ...myDocSnap.data(), rank: '>50' });
+            } else {
+              setCurrentUserData(null);
+            }
+          }
+        }
       } catch (error) {
-        console.error("Error loading leaderboard:", error);
+        console.error("Leaderboard error:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [filter]);
 
-  const handleUserClick = (targetUid: string) => {
-    if (targetUid === currentUser?.uid) {
-        router.push('/profile'); 
-    } else {
-        router.push(`/profile/${targetUid}`);
+    fetchData();
+  }, [activeTab, user]);
+
+  // --- STYLING HELPERS ---
+  const getRankStyle = (index: number) => {
+    switch (index) {
+      case 0: return "bg-gradient-to-r from-yellow-500/20 to-yellow-900/20 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.3)]";
+      case 1: return "bg-gradient-to-r from-slate-400/20 to-slate-800/20 border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.2)]";
+      case 2: return "bg-gradient-to-r from-orange-500/20 to-orange-900/20 border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]";
+      default: return "bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60";
     }
   };
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={28} />;
-    if (rank === 2) return <Medal className="text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.3)]" size={26} />;
-    if (rank === 3) return <Medal className="text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]" size={26} />;
-    return <span className="font-black text-slate-500 text-lg w-8 text-center">#{rank}</span>;
+  const getRankIcon = (index: number) => {
+    switch (index) {
+      case 0: return <Crown size={24} className="text-yellow-400 fill-yellow-400 animate-pulse drop-shadow-md" />;
+      case 1: return <Medal size={22} className="text-slate-300 drop-shadow-md" />;
+      case 2: return <Medal size={22} className="text-orange-400 drop-shadow-md" />;
+      default: return <span className="font-bold text-slate-500 w-8 text-center text-lg">#{index + 1}</span>;
+    }
   };
 
-  // --- SKELETON LOADER ---
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
-        <FloatingParticles />
-        <div className="max-w-4xl mx-auto p-6 space-y-8 relative z-10 pt-12">
-           <div className="flex flex-col md:flex-row justify-between gap-6 animate-pulse">
-             <div className="h-10 w-48 bg-slate-700/50 rounded-lg"></div>
-             <div className="h-10 w-full md:w-96 bg-slate-700/50 rounded-xl"></div>
-           </div>
-           <div className="space-y-4">
-             {[1, 2, 3, 4, 5].map((i) => (
-               <div key={i} className="h-20 bg-slate-800/80 rounded-2xl border border-slate-700/50 relative overflow-hidden">
-                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-700/10 to-transparent animate-[shimmer_1.5s_infinite]" />
-               </div>
-             ))}
-           </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 pb-24 relative overflow-hidden text-slate-100">
       <FloatingParticles />
-      <GlowingOrb color="bg-yellow-500" size={300} position={{ x: '-10%', y: '10%' }} />
-      <GlowingOrb color="bg-blue-600" size={400} position={{ x: '80%', y: '40%' }} />
 
-      <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 relative z-10 pb-24">
+      {/* Increased Width: max-w-2xl */}
+      <div className="max-w-2xl mx-auto relative z-10 flex flex-col h-full min-h-screen">
         
-        {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-20 md:pt-4">
-          <div>
-            <h1 className="text-3xl font-black text-white flex items-center gap-3 tracking-tight">
-              <div className="p-2.5 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
-                <Crown size={28} fill="currentColor" />
-              </div>
-              {t.title}
-            </h1>
-            <p className="text-slate-400 mt-2 font-medium text-lg">
-              {t.subtitle} <span className="text-blue-400 capitalize">
-                {/* @ts-ignore */}
-                {t.filters[filter]}
-              </span>
-            </p>
-          </div>
-
-          {/* FILTER TABS */}
-          <div className="bg-slate-900/50 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/50 flex overflow-x-auto no-scrollbar shadow-xl">
-            {['today', 'week', 'month', 'all'].map((key) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap relative overflow-hidden ${
-                  filter === key 
-                    ? 'text-white shadow-lg' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-              >
-                {filter === key && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl"
-                  />
-                )}
-                {/* @ts-ignore */}
-                <span className="relative z-10 capitalize">{t.filters[key]}</span>
-              </button>
-            ))}
-          </div>
+        {/* HEADER - Updated padding for mobile */}
+        <div className="pt-20 md:pt-10 pb-6 px-6 text-center">
+           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 flex items-center justify-center gap-2 drop-shadow-sm">
+             <Trophy size={28} className="text-yellow-400" fill="currentColor" /> {t.title}
+           </h1>
+           <p className="text-slate-400 text-sm font-medium mt-1 tracking-wide">{t.subtitle}</p>
         </div>
 
-        {/* LEADERBOARD LIST */}
-        <div className="space-y-3">
-          {users.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="py-16 text-center bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-dashed border-slate-700"
-            >
-              <Trophy className="mx-auto text-slate-600 mb-4" size={48} />
-              <h3 className="text-xl font-bold text-white mb-2">{t.empty.title}</h3>
-              <p className="text-slate-400 font-medium">{t.empty.desc}</p>
-            </motion.div>
+        {/* TABS */}
+        <div className="px-4 mb-6 sticky top-4 z-50">
+           <div className="bg-slate-900/80 p-1.5 rounded-2xl flex items-center justify-between border border-white/10 backdrop-blur-xl shadow-2xl">
+              {(['today', 'week', 'month', 'all'] as const).map((tab) => (
+                 <button
+                   key={tab}
+                   onClick={() => setActiveTab(tab)}
+                   className={`relative flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === tab ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                 >
+                   {activeTab === tab && (
+                     <motion.div 
+                        layoutId="tab-bg" 
+                        className="absolute inset-0 bg-indigo-600 rounded-xl shadow-lg border border-indigo-400/30" 
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} 
+                     />
+                   )}
+                   <span className="relative z-10">{t.tabs[tab]}</span>
+                 </button>
+              ))}
+           </div>
+        </div>
+
+        {/* LIST VIEW */}
+        <div className="flex-1 px-4 space-y-3 pb-20">
+          {loading ? (
+             <div className="flex flex-col items-center justify-center space-y-4 py-20 opacity-50">
+                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+             </div>
           ) : (
-            users.map((u, index) => {
-              const rank = index + 1;
-              const isMe = u.uid === currentUser?.uid;
+            <AnimatePresence mode="popLayout">
+               {leaders.length > 0 ? (
+                 leaders.map((u, idx) => {
+                   const isMe = user?.uid === u.uid; // 🟢 Check if this is me
 
-              return (
-                <motion.button
-                  key={u.uid}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  onClick={() => handleUserClick(u.uid)}
-                  whileHover={{ scale: 1.01, backgroundColor: "rgba(30, 41, 59, 0.8)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`w-full group relative flex items-center gap-4 p-4 md:p-5 rounded-2xl border transition-all duration-300 overflow-hidden
-                    ${isMe 
-                      ? 'bg-blue-500/10 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.15)]' 
-                      : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-600 hover:shadow-xl'
-                    }
-                  `}
-                >
-                  {/* Glass Shimmer for top ranks */}
-                  {rank <= 3 && (
-                     <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
+                   return (
+                     <motion.div
+                       key={u.uid}
+                       initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                       animate={{ opacity: 1, y: 0, scale: 1 }}
+                       transition={{ delay: idx * 0.05, duration: 0.3 }}
+                       onClick={() => router.push(`/profile/${u.uid}`)}
+                       className={`rounded-2xl p-4 flex items-center gap-4 transition-all border backdrop-blur-sm relative overflow-hidden group cursor-pointer 
+                         ${isMe ? 'ring-2 ring-blue-500/50 z-10' : ''} 
+                         ${getRankStyle(idx)}
+                       `}
+                     >
+                        {/* 1. Real Numbering & Rank Icon */}
+                        <div className="w-10 flex justify-center shrink-0">
+                          {getRankIcon(idx)}
+                        </div>
 
-                  {/* 1. Rank */}
-                  <div className="w-10 md:w-14 flex flex-col items-center justify-center flex-shrink-0">
-                    {getRankIcon(rank)}
-                  </div>
+                        {/* 2. Avatar */}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 overflow-hidden shadow-sm
+                            ${idx === 0 ? 'border-yellow-400/50 bg-yellow-900/20 text-yellow-200' : 'border-slate-600 bg-slate-700 text-slate-300'}
+                        `}>
+                           {u.avatar ? (
+                             <img src={u.avatar} className="w-full h-full object-cover" alt="User" />
+                           ) : (
+                             u.displayName?.[0] || 'U'
+                           )}
+                        </div>
 
-                  {/* 2. Avatar */}
-                  <div className={`
-                    w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center flex-shrink-0 text-lg md:text-xl font-black shadow-lg border-2
-                    ${rank === 1 ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 text-yellow-500' : 
-                      isMe ? 'border-blue-500/50 bg-blue-500/20 text-blue-400' : 'border-slate-600 bg-slate-700 text-slate-400'}
-                  `}>
-                    {u.displayName ? u.displayName[0].toUpperCase() : <UserIcon size={20} />}
-                  </div>
+                        {/* 3. Display Name & You Badge */}
+                        <div className="flex-1 min-w-0">
+                           <div className="flex items-center gap-2">
+                             <h4 className={`font-bold text-base md:text-lg truncate ${idx === 0 ? 'text-yellow-100' : 'text-slate-200'}`}>
+                               {u.displayName || 'Anonymous Student'}
+                             </h4>
+                             
+                             {/* 🟢 "YOU" Badge */}
+                             {isMe && (
+                               <span className="shrink-0 text-[10px] font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full shadow-sm shadow-blue-500/50">
+                                 {t.you}
+                               </span>
+                             )}
+                           </div>
+                           
+                           {/* Optional Class Badge */}
+                           {/* {u.classId && (
+                             <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] font-bold bg-white/5 text-slate-400 px-1.5 py-0.5 rounded border border-white/5 flex items-center gap-1">
+                                  <Shield size={10} /> {u.classId}
+                                </span>
+                             </div>
+                           )} */}
+                        </div>
 
-                  {/* 3. Info */}
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`font-bold text-base md:text-lg truncate ${isMe ? 'text-white' : 'text-slate-200'}`}>
-                        {u.displayName || 'Anonymous'}
-                      </h3>
-                      {isMe && (
-                        <span className="text-[10px] font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm shadow-blue-500/40">
-                          {t.card.you}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-3 text-xs md:text-sm font-medium text-slate-400">
-                      <span className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
-                        <Shield size={12} className="text-indigo-400"/> 
-                        {t.card.lvl} {Math.floor(u.totalXP/100)+1}
-                      </span>
-                      {u.currentStreak > 0 && (
-                        <span className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
-                          <Flame size={12} className="text-orange-500 animate-pulse"/> 
-                          {u.currentStreak}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 4. Score */}
-                  <div className="text-right pl-2">
-                    <div className="font-black text-lg md:text-2xl text-white tracking-tight">
-                      {u.score.toLocaleString()}
-                    </div>
-                    <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">{t.card.xp}</div>
-                  </div>
-
-                  {/* Arrow for interaction hint */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center text-slate-500 pl-2">
-                    <ChevronRight size={20} />
-                  </div>
-                </motion.button>
-              );
-            })
+                        {/* 4. XP Score */}
+                        <div className="text-right pl-2">
+                           <span className={`block font-black text-xl tracking-tight ${
+                               idx === 0 ? 'text-yellow-400 drop-shadow-md' : 
+                               idx === 1 ? 'text-slate-300' : 
+                               idx === 2 ? 'text-orange-400' : 'text-indigo-400'}
+                           `}>
+                             {u.xp?.toLocaleString() || 0}
+                           </span>
+                           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">XP</span>
+                        </div>
+                        
+                        {/* Shine Effect for Top 3 */}
+                        {idx < 3 && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000" />
+                        )}
+                     </motion.div>
+                   );
+                 })
+               ) : (
+                 <div className="text-center py-20 text-slate-500">
+                    <Sparkles className="mx-auto mb-2 opacity-20" size={40} />
+                    <p className="text-sm font-medium">{t.empty}</p>
+                 </div>
+               )}
+            </AnimatePresence>
           )}
         </div>
+
+       
       </div>
-      
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
     </div>
   );
 }

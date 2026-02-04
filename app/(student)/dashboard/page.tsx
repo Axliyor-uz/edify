@@ -6,11 +6,11 @@ import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { 
-  Trophy, Flame, Target, ArrowRight, BookOpen, Star, 
-  Edit2, CheckCircle, Zap, TrendingUp, Activity, Sparkles, Clock, School
+  Trophy, Flame, Target, ArrowRight, Star, 
+  CheckCircle, Activity, Sparkles, Clock, School
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useStudentLanguage } from '../layout'; // 🟢 IMPORT FROM LAYOUT
+import { useStudentLanguage } from '../layout'; 
 
 // --- 1. TRANSLATION DICTIONARY ---
 const DASHBOARD_TRANSLATIONS = {
@@ -41,7 +41,7 @@ const DASHBOARD_TRANSLATIONS = {
       descEmpty: "Kutilayotgan vazifalar yo'q! Natijalarni yaxshilash uchun sinflarni ko'zdan kechiring."
     },
     activity: {
-      title: "Faollik Seriyasi",
+      title: "Faollik Seriyasi (7 Kun)",
       today: "Bugun"
     },
     modal: {
@@ -82,7 +82,7 @@ const DASHBOARD_TRANSLATIONS = {
       descEmpty: "No pending assignments! Browse your classes to review or improve your scores."
     },
     activity: {
-      title: "Activity Streak",
+      title: "Activity Streak (7 Days)",
       today: "Today"
     },
     modal: {
@@ -123,7 +123,7 @@ const DASHBOARD_TRANSLATIONS = {
       descEmpty: "Нет активных заданий! Просмотрите классы, чтобы улучшить свои результаты."
     },
     activity: {
-      title: "Активность",
+      title: "Активность (7 Дней)",
       today: "Сегодня"
     },
     modal: {
@@ -139,7 +139,6 @@ const DASHBOARD_TRANSLATIONS = {
   }
 };
 
-// --- TYPES ---
 interface UserProfile {
   displayName: string;
   totalXP: number;
@@ -156,7 +155,6 @@ interface UpcomingTask {
   dueAt: any;
 }
 
-// Floating Particles Background (Unchanged)
 const FloatingParticles = () => {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -198,7 +196,6 @@ const FloatingParticles = () => {
   );
 };
 
-// Glowing Orb (Unchanged)
 const GlowingOrb = ({ color, size, position }: { color: string; size: number; position: { x: string; y: string } }) => {
   return (
     <motion.div
@@ -224,8 +221,6 @@ const GlowingOrb = ({ color, size, position }: { color: string; size: number; po
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  
-  // 🟢 USE HOOK FROM LAYOUT
   const { lang } = useStudentLanguage();
   const t = DASHBOARD_TRANSLATIONS[lang];
 
@@ -233,7 +228,7 @@ export default function StudentDashboard() {
   const [nextTask, setNextTask] = useState<UpcomingTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [newGoal, setNewGoal] = useState(100);
+  const [newGoal, setNewGoal] = useState(200); // 🟢 Default 200
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -249,52 +244,36 @@ export default function StudentDashboard() {
             displayName: data.displayName || user.displayName || 'Student',
             totalXP: data.totalXP || 0,
             currentStreak: data.currentStreak || 0,
-            dailyGoal: data.dailyGoal || 100,
+            dailyGoal: data.dailyGoal || 200, // 🟢 Default 200
             dailyHistory: data.dailyHistory || {}
           });
-          setNewGoal(data.dailyGoal || 100);
+          setNewGoal(data.dailyGoal || 200);
         } else {
           setProfile({
             displayName: user.displayName || 'Student',
             totalXP: 0,
             currentStreak: 0,
-            dailyGoal: 100,
+            dailyGoal: 200, // 🟢 Default 200
             dailyHistory: {}
           });
         }
 
+        // Load Task Logic (Unchanged)
         const enrolledQ = collection(db, `users/${user.uid}/enrolled_classes`);
         const enrolledSnap = await getDocs(enrolledQ);
         const classIds = enrolledSnap.docs.map(d => d.id);
 
         if (classIds.length > 0) {
            let foundTask: UpcomingTask | null = null;
-           
            for (const clsId of classIds) {
-             const assignQ = query(
-               collection(db, `classes/${clsId}/assignments`),
-               where('status', '==', 'active'),
-               orderBy('dueAt', 'asc'),
-               limit(1)
-             );
+             const assignQ = query(collection(db, `classes/${clsId}/assignments`), where('status', '==', 'active'), orderBy('dueAt', 'asc'), limit(1));
              const assignSnap = await getDocs(assignQ);
              if (!assignSnap.empty) {
                 const aData = assignSnap.docs[0].data();
-                const attemptQ = query(
-                    collection(db, 'attempts'), 
-                    where('assignmentId', '==', assignSnap.docs[0].id),
-                    where('userId', '==', user.uid)
-                );
+                const attemptQ = query(collection(db, 'attempts'), where('assignmentId', '==', assignSnap.docs[0].id), where('userId', '==', user.uid));
                 const attemptSnap = await getDocs(attemptQ);
-                
                 if(attemptSnap.empty) {
-                   foundTask = {
-                     assignmentId: assignSnap.docs[0].id,
-                     classId: clsId,
-                     title: aData.title,
-                     className: "Mathematics",
-                     dueAt: aData.dueAt
-                   };
+                   foundTask = { assignmentId: assignSnap.docs[0].id, classId: clsId, title: aData.title, className: "Mathematics", dueAt: aData.dueAt };
                    break;
                 }
              }
@@ -311,18 +290,22 @@ export default function StudentDashboard() {
     loadDashboardData();
   }, [user]);
 
+  // 🟢 CALCULATIONS
   const todayKey = new Date().toISOString().split('T')[0];
   const todayXP = profile?.dailyHistory?.[todayKey] || 0;
-  const dailyGoal = profile?.dailyGoal || 100;
+  const dailyGoal = profile?.dailyGoal || 200;
   const progressPercent = Math.min(Math.round((todayXP / dailyGoal) * 100), 100);
   
+  // 🟢 LEVEL LOGIC: Every 1000 XP = 1 Level
   const currentLevel = Math.floor((profile?.totalXP || 0) / 1000) + 1;
-  const xpForNextLevel = currentLevel * 1000;
-  const xpProgress = (profile?.totalXP || 0) % 1000;
+  const currentLevelProgress = (profile?.totalXP || 0) % 1000;
+  const nextLevelXP = 1000; // Fixed Target
+  const levelProgressPercent = Math.min((currentLevelProgress / nextLevelXP) * 100, 100);
 
   const saveGoal = (goal: number) => {
     setProfile(prev => prev ? ({ ...prev, dailyGoal: goal }) : null);
     setIsEditingGoal(false);
+    // Note: Ideally save to Firebase here
   };
 
   if (loading) {
@@ -339,7 +322,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
-      {/* Background */}
       <FloatingParticles />
       <GlowingOrb color="bg-blue-500" size={300} position={{ x: '10%', y: '20%' }} />
       <GlowingOrb color="bg-purple-500" size={400} position={{ x: '85%', y: '15%' }} />
@@ -347,7 +329,7 @@ export default function StudentDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-12 relative z-10">
         
-        {/* WELCOME HEADER */}
+        {/* HEADER */}
         <motion.div 
           className="flex flex-col lg:flex-row lg:items-center justify-between gap-5"
           initial={{ opacity: 0, y: -30 }}
@@ -367,18 +349,12 @@ export default function StudentDashboard() {
           </div>
           <div className="flex gap-3">
             <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
-              <Link 
-                href="/history" 
-                className="px-6 py-3 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 text-slate-300 font-bold rounded-xl hover:bg-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-700/50 transition-all"
-              >
+              <Link href="/history" className="px-6 py-3 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 text-slate-300 font-bold rounded-xl hover:bg-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-700/50 transition-all">
                 {t.buttons.history}
               </Link>
             </motion.button>
             <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
-              <Link 
-                href="/classes" 
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/40 hover:shadow-2xl transition-all flex items-center gap-2"
-              >
+              <Link href="/classes" className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 shadow-xl shadow-blue-500/40 hover:shadow-2xl transition-all flex items-center gap-2">
                 <School size={20} /> {t.buttons.classes}
               </Link>
             </motion.button>
@@ -393,14 +369,39 @@ export default function StudentDashboard() {
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           {[
-            { icon: <Trophy size={28} />, value: (profile?.totalXP || 0).toLocaleString(), label: t.stats.xp, color: "blue" },
-            { icon: <Flame size={28} />, value: `${profile?.currentStreak || 0} ${t.stats.days}`, label: t.stats.streak, color: "orange" },
-            { icon: <Star size={28} />, value: `${t.stats.level.split(' ')[1] || 'Level'} ${currentLevel}`, label: t.stats.level, color: "purple", sub: `${xpProgress}/${xpForNextLevel} XP` },
-            { icon: <Target size={20} />, value: `${todayXP} / ${dailyGoal} XP`, label: t.stats.goal, color: "blue", progress: progressPercent }
+            { 
+              icon: <Trophy size={28} />, 
+              value: (profile?.totalXP || 0).toLocaleString(), 
+              label: t.stats.xp, 
+              color: "blue" 
+            },
+            { 
+              icon: <Flame size={28} />, 
+              value: `${profile?.currentStreak || 0} ${t.stats.days}`, 
+              label: t.stats.streak, 
+              color: "orange" 
+            },
+            { 
+              icon: <Star size={28} />, 
+              value: `${t.stats.level.split(' ')[1] || 'Lvl'} ${currentLevel}`, 
+              label: t.stats.level, 
+              color: "purple", 
+              sub: `${currentLevelProgress} / 1000 XP`, // 🟢 Updated Display
+              progress: levelProgressPercent // 🟢 Updated Percent
+            },
+            { 
+              icon: <Target size={20} />, 
+              value: `${todayXP} / ${dailyGoal} XP`, 
+              label: t.stats.goal, 
+              color: "blue", 
+              progress: progressPercent,
+              onClick: () => setIsEditingGoal(true) // Click to Edit
+            }
           ].map((stat, idx) => (
             <motion.div
               key={idx}
-              className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-${stat.color}-500/30 shadow-2xl relative overflow-hidden group`}
+              onClick={stat.onClick}
+              className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-${stat.color}-500/30 shadow-2xl relative overflow-hidden group ${stat.onClick ? 'cursor-pointer hover:border-blue-400' : ''}`}
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
@@ -437,6 +438,7 @@ export default function StudentDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
+          {/* Main Task Card */}
           <motion.div 
             className="lg:col-span-2 bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 relative overflow-hidden group"
             whileHover={{ y: -5 }}
@@ -452,10 +454,7 @@ export default function StudentDashboard() {
               </h2>
               
               <p className="text-slate-400 mb-6 max-w-lg text-lg">
-                {nextTask 
-                  ? t.task.descPending
-                  : t.task.descEmpty
-                }
+                {nextTask ? t.task.descPending : t.task.descEmpty}
               </p>
               
               <div className="flex flex-wrap gap-4">
@@ -467,12 +466,8 @@ export default function StudentDashboard() {
                     {nextTask ? t.buttons.startTest : t.buttons.browse} <ArrowRight size={20} />
                   </Link>
                 </motion.button>
-                
                 <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
-                  <Link 
-                    href="/classes"
-                    className="px-8 py-4 bg-slate-700/50 border-2 border-slate-600 text-slate-300 font-bold rounded-xl hover:bg-slate-700 hover:border-slate-500 flex items-center gap-2"
-                  >
+                  <Link href="/classes" className="px-8 py-4 bg-slate-700/50 border-2 border-slate-600 text-slate-300 font-bold rounded-xl hover:bg-slate-700 hover:border-slate-500 flex items-center gap-2">
                     <School size={20} /> {t.buttons.viewAll}
                   </Link>
                 </motion.button>
@@ -480,7 +475,7 @@ export default function StudentDashboard() {
             </div>
           </motion.div>
 
-          {/* Activity Heatmap */}
+          {/* 🟢 ACTIVITY CHART (Last 7 Days) */}
           <motion.div 
             className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 flex flex-col justify-between group"
             whileHover={{ y: -5 }}
@@ -489,24 +484,37 @@ export default function StudentDashboard() {
               <Activity size={20} className="text-orange-400" /> {t.activity.title}
             </h3>
             
-            <div className="flex gap-1.5 h-28 items-end justify-between">
-              {[...Array(14)].map((_, i) => {
+            <div className="flex gap-2 h-28 items-end justify-between">
+              {/* Loop Last 7 Days (Correct Order) */}
+              {[6, 5, 4, 3, 2, 1, 0].map((daysAgo) => {
                 const d = new Date();
-                d.setDate(d.getDate() - (13 - i));
+                d.setDate(d.getDate() - daysAgo);
                 const key = d.toISOString().split('T')[0];
                 const xp = profile?.dailyHistory?.[key] || 0;
-                const isToday = i === 13;
-                const height = Math.max((xp / 200) * 100, 10);
                 
+                const isToday = daysAgo === 0;
+                // Scale bar: max 200 XP = 100% height (min 10%)
+                const height = Math.min(Math.max((xp / 200) * 100, 10), 100);
+                
+                // Get Day Name (M, T, W...)
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+
                 return (
-                  <div key={i} className="w-full flex flex-col items-center gap-1" title={`${key}: ${xp} XP`}>
+                  <div key={key} className="w-full flex flex-col items-center gap-2 group/bar relative" title={`${key}: ${xp} XP`}>
+                    {/* Tooltip on Hover */}
+                    <div className="absolute bottom-full mb-1 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10">
+                      {xp} XP
+                    </div>
+
                     <div 
-                      className={`w-full rounded-t-lg ${
-                        isToday ? 'bg-blue-500' : xp > 0 ? 'bg-blue-600/70' : 'bg-slate-700/50'
+                      className={`w-full rounded-t-lg transition-all duration-500 ${
+                        isToday ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : xp > 0 ? 'bg-blue-600/60 hover:bg-blue-500' : 'bg-slate-700/30'
                       }`}
                       style={{ height: `${height}%` }}
                     />
-                    {isToday && <span className="text-[10px] text-blue-400 font-bold">{t.activity.today}</span>}
+                    <span className={`text-[10px] font-bold ${isToday ? 'text-white' : 'text-slate-500'}`}>
+                      {dayName}
+                    </span>
                   </div>
                 );
               })}
@@ -514,7 +522,7 @@ export default function StudentDashboard() {
           </motion.div>
         </motion.div>
 
-        {/* MODAL */}
+        {/* GOAL EDIT MODAL (Unchanged) */}
         <AnimatePresence>
           {isEditingGoal && (
             <motion.div 
@@ -531,7 +539,6 @@ export default function StudentDashboard() {
               >
                 <h3 className="text-2xl font-black text-white mb-2">{t.modal.title}</h3>
                 <p className="text-slate-400 mb-6">{t.modal.desc}</p>
-                
                 {[
                   { xp: 50, label: 'Casual', emoji: '😌' },
                   { xp: 100, label: 'Regular', emoji: '🎯' },
@@ -541,36 +548,22 @@ export default function StudentDashboard() {
                   <motion.button
                     key={xp}
                     onClick={() => saveGoal(xp)}
-                    className={`w-full p-4 rounded-xl border-2 mb-3 text-left ${
-                      newGoal === xp 
-                        ? 'border-blue-500 bg-blue-500/20' 
-                        : 'border-slate-700 hover:border-slate-600 bg-slate-900/50'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    className={`w-full p-4 rounded-xl border-2 mb-3 text-left ${newGoal === xp ? 'border-blue-500 bg-blue-500/20' : 'border-slate-700 hover:border-slate-600 bg-slate-900/50'}`}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{emoji}</span>
                         <div>
                           <div className="font-black text-white">{xp} XP</div>
-                          <div className="text-sm text-slate-400">
-                            {/* 🟢 Translate Label */}
-                            {t.modal.levels[label as keyof typeof t.modal.levels]}
-                          </div>
+                          <div className="text-sm text-slate-400">{t.modal.levels[label as keyof typeof t.modal.levels]}</div>
                         </div>
                       </div>
                       {newGoal === xp && <CheckCircle className="text-blue-400" size={20} />}
                     </div>
                   </motion.button>
                 ))}
-                
-                <button 
-                  onClick={() => setIsEditingGoal(false)} 
-                  className="w-full mt-4 py-3 text-slate-400 font-bold rounded-xl"
-                >
-                  {t.buttons.cancel}
-                </button>
+                <button onClick={() => setIsEditingGoal(false)} className="w-full mt-4 py-3 text-slate-400 font-bold rounded-xl">{t.buttons.cancel}</button>
               </motion.div>
             </motion.div>
           )}

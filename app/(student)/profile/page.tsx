@@ -476,6 +476,36 @@ const calculateLevel = (xp: number) => {
   return Math.floor(xp / 100) + 1;
 };
 
+// --- HELPER: Process Last 30 Days ---
+const getLast30DaysData = (history: Record<string, number> = {}) => {
+  const days = [];
+  const today = new Date();
+  
+  // Create last 30 days array (in reverse order for chart left-to-right)
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i); // Go back i days
+    const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+    
+    // Get stats
+    const xp = history[dateStr] || 0;
+    
+    // Format Display Date (e.g., "Feb 4")
+    const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon"
+
+    days.push({
+      fullDate: dateStr,
+      displayDate,
+      dayName,
+      xp
+    });
+  }
+  return days;
+};
+
+
+
 const getCellColor = (xp: number) => {
   if (xp === 0) return "bg-slate-700/50 border-slate-600";
   if (xp < 50) return "bg-indigo-500/20 border-indigo-500/30";
@@ -534,6 +564,9 @@ export default function ProfilePage() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});
+
+
+  
 
   // 🟢 Use Language Hook
   const { lang } = useStudentLanguage();
@@ -677,6 +710,12 @@ export default function ProfilePage() {
   const weeks = [];
   for (let i = 0; i < heatmapData.length; i += 7)
     weeks.push(heatmapData.slice(i, i + 7));
+
+  // Inside ProfilePage, before return:
+  const last30Days = getLast30DaysData(userData.dailyHistory);
+  const maxXP = Math.max(...last30Days.map(d => d.xp), 1); // Avoid div by zero
+  const totalXP30d = last30Days.reduce((acc, curr) => acc + curr.xp, 0);
+  const avgXP = Math.round(totalXP30d / 30);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-800 relative overflow-hidden">
@@ -947,6 +986,7 @@ export default function ProfilePage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
           >
+            {/* 1. STATS GRID (Unchanged) */}
             <div className="grid grid-cols-3 gap-4">
               {[
                 {
@@ -989,61 +1029,82 @@ export default function ProfilePage() {
               ))}
             </div>
 
+            {/* 2. MODERN ACTIVITY CHART (Replaces Heatmap) */}
             <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-lg">
-              <div className="flex items-center justify-between mb-6">
+              
+              {/* Header with Stats */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <h3 className="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
                   <Calendar size={16} className="text-indigo-400" /> {t.activity.title}
                 </h3>
-                <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-2 py-1 rounded-md">
-                  {activeDaysCount} {t.activity.daysActive}
-                </span>
-              </div>
-              <div
-                ref={heatmapScrollRef}
-                className="overflow-x-auto pb-2 w-full custom-scrollbar"
-              >
-                <div className="flex gap-2 min-w-max">
-                  <div className="flex flex-col gap-[3px] text-[9px] font-bold text-slate-400 pt-[2px] mt-4">
-                    <span className="h-[10px]">{t.activity.mon}</span>
-                    <span className="h-[10px]"></span>
-                    <span className="h-[10px]">{t.activity.wed}</span>
-                    <span className="h-[10px]"></span>
-                    <span className="h-[10px]">{t.activity.fri}</span>
+                
+                <div className="flex gap-3">
+                  <div className="px-3 py-1.5 rounded-lg bg-slate-700/50 border border-slate-600 flex flex-col items-end min-w-[80px]">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">30 Days</span>
+                    <span className="text-sm font-black text-indigo-400">{totalXP30d.toLocaleString()} XP</span>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex h-3 relative">
-                      {weeks.map((week, i) => (
-                        <div key={i} className="w-[13px] mr-[3px] relative">
-                          {week[0].dayOfMonth <= 7 && (
-                            <span className="absolute text-[9px] font-bold text-slate-400 top-0 left-0 whitespace-nowrap">
-                              {week[0].month}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-rows-7 grid-flow-col gap-[3px]">
-                      {heatmapData.map((day, i) => (
-                        <div
-                          key={i}
-                          title={`${day.date}: ${day.xp} XP`}
-                          className={`w-[11px] h-[11px] rounded-[2px] border ${getCellColor(
-                            day.xp
-                          )} hover:scale-125 transition-transform duration-200`}
-                        />
-                      ))}
-                    </div>
+                  <div className="px-3 py-1.5 rounded-lg bg-slate-700/50 border border-slate-600 flex flex-col items-end min-w-[80px]">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Daily Avg</span>
+                    <span className="text-sm font-black text-white">{avgXP} XP</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 mt-4 text-[10px] text-slate-400 font-medium">
-                <span>{t.activity.less}</span>
-                <div className="w-[10px] h-[10px] bg-slate-700/50 rounded-[2px] border border-slate-600"></div>
-                <div className="w-[10px] h-[10px] bg-indigo-500/20 rounded-[2px] border border-indigo-500/30"></div>
-                <div className="w-[10px] h-[10px] bg-indigo-500/40 rounded-[2px] border border-indigo-500/50"></div>
-                <div className="w-[10px] h-[10px] bg-indigo-500/60 rounded-[2px] border border-indigo-500/70"></div>
-                <div className="w-[10px] h-[10px] bg-indigo-500/80 rounded-[2px] border border-indigo-500"></div>
-                <span>{t.activity.more}</span>
+
+              {/* Chart Container */}
+              <div className="relative w-full h-48 flex items-end gap-1 md:gap-2 pt-6">
+                
+                {/* Y-Axis Guidelines (Background) */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 pb-4">
+                   <div className="border-t border-slate-400 w-full"></div>
+                   <div className="border-t border-slate-400 w-full dashed"></div>
+                   <div className="border-t border-slate-400 w-full"></div>
+                </div>
+
+                {/* Bars */}
+                {last30Days.map((day, idx) => {
+                  const heightPercent = (day.xp / maxXP) * 100;
+                  const isToday = idx === 29; 
+
+                  return (
+                    <div 
+                      key={day.fullDate} 
+                      className="group relative flex-1 h-full flex flex-col justify-end items-center"
+                    >
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+                        <div className="bg-slate-900 text-white text-xs rounded-lg py-1.5 px-3 shadow-xl border border-slate-700 whitespace-nowrap text-center">
+                          <p className="font-black text-indigo-400">{day.xp} XP</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{day.displayDate}</p>
+                        </div>
+                        {/* Little triangle arrow */}
+                        <div className="w-2 h-2 bg-slate-900 border-r border-b border-slate-700 rotate-45 mx-auto -mt-1"></div>
+                      </div>
+
+                      {/* Bar */}
+                      <motion.div 
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.max(heightPercent, 2)}%` }} // Min height 2% so empty days show a line
+                        transition={{ duration: 0.5, delay: idx * 0.02 }}
+                        className={`w-full max-w-[12px] rounded-t-sm transition-all duration-200 
+                          ${day.xp > 0 
+                            ? 'bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.4)]' 
+                            : 'bg-slate-700/30'
+                          }
+                          ${isToday ? 'ring-1 ring-white/50 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : ''}
+                        `}
+                      />
+                      
+                      {/* X-Axis Label (Show every 5th day) */}
+                      <div className="mt-2 h-4 w-full text-center">
+                        {(idx % 5 === 0 || isToday) && (
+                          <span className={`text-[9px] font-bold block whitespace-nowrap ${isToday ? 'text-white' : 'text-slate-500'}`}>
+                            {day.displayDate.split(' ')[1]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
